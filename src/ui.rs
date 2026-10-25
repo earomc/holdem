@@ -1086,34 +1086,32 @@ fn draw_you(frame: &mut Frame, app: &App, v: &TableView, area: Rect) {
             info.push_str(&format!("    Rebuys {}", s.rebuys));
         }
         lines.push(Line::from(info));
-        if acting {
-            let mut parts: Vec<Span<'static>> = Vec::new();
-            if app.hints_on()
-                && let Some(h) = &app.hint
-            {
-                parts.push(Span::styled(
-                    format!(
-                        "Win chance vs {} random hand{}: about {:.0}%",
-                        h.opponents,
-                        if h.opponents == 1 { "" } else { "s" },
-                        h.win * 100.0
-                    ),
-                    Style::new().fg(Color::Cyan),
-                ));
+        let mut parts: Vec<Span<'static>> = Vec::new();
+        if let Some(h) = app.current_hint() {
+            parts.push(Span::styled(
+                format!(
+                    "Win chance vs {} random hand{}: about {:.0}%",
+                    h.opponents,
+                    if h.opponents == 1 { "" } else { "s" },
+                    h.win * 100.0
+                ),
+                Style::new().fg(Color::Cyan),
+            ));
+        }
+        if acting && let Some(secs) = v.turn_seconds_left {
+            if !parts.is_empty() {
+                parts.push(Span::raw("    "));
             }
-            if let Some(secs) = v.turn_seconds_left {
-                if !parts.is_empty() {
-                    parts.push(Span::raw("    "));
-                }
-                let style = if secs <= 5 {
-                    Style::new()
-                        .fg(Color::LightRed)
-                        .add_modifier(Modifier::BOLD)
-                } else {
-                    Style::new().fg(Color::Yellow)
-                };
-                parts.push(Span::styled(format!("{}s left to act", secs), style));
-            }
+            let style = if secs <= 5 {
+                Style::new()
+                    .fg(Color::LightRed)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::new().fg(Color::Yellow)
+            };
+            parts.push(Span::styled(format!("{}s left to act", secs), style));
+        }
+        if !parts.is_empty() {
             lines.push(Line::from(parts));
         }
     }
@@ -1750,6 +1748,75 @@ mod render_tests {
             println!("{}", screen_text(&app, 80, 24));
             press(&mut app, KeyCode::Esc);
         }
+    }
+
+    /// The hint is on screen for the whole hand while you are in it: on your
+    /// turn, while others act, and during an all-in run-out; never after a fold.
+    #[test]
+    fn the_win_chance_shows_while_you_are_in_the_hand() {
+        let (mut waiting, mut runout, mut folded) = (0, 0, 0);
+        for seed in 0..6u64 {
+            let mut app = App::new(fast_config(), Some(seed), Sound::new(true));
+            press(&mut app, KeyCode::Enter);
+            press(&mut app, KeyCode::Enter);
+            let deadline = Instant::now() + Duration::from_secs(30);
+            let mut turns = 0;
+            while turns < 30 && Instant::now() < deadline {
+                app.tick();
+                let Some(v) = app.view().cloned() else {
+                    continue;
+                };
+                if v.game_over {
+                    break;
+                }
+                let me = &v.seats[v.you.unwrap()];
+                let live =
+                    matches!(v.state, State::Betting | State::Runout) && me.in_hand && !me.folded;
+                let shown = screen_text(&app, 100, 32).contains("Win chance");
+                assert_eq!(
+                    shown,
+                    live,
+                    "seed {}: state {:?}, folded {}, your turn {}",
+                    seed,
+                    v.state,
+                    me.folded,
+                    v.legal.is_some()
+                );
+                if live && v.legal.is_none() {
+                    waiting += 1;
+                }
+                if live && v.state == State::Runout {
+                    runout += 1;
+                }
+                if me.folded {
+                    folded += 1;
+                }
+                if let Some(l) = v.legal {
+                    turns += 1;
+                    // Mix calls, folds and all-ins, to see every situation.
+                    let key = match turns % 4 {
+                        0 | 2 if !l.can_check => 'f',
+                        3 if l.can_go_all_in() => 'a',
+                        _ => 'c',
+                    };
+                    press(&mut app, KeyCode::Char(key));
+                    if key == 'a' {
+                        press(&mut app, KeyCode::Char('a'));
+                    }
+                } else if v.state == State::HandOver && !v.you_ready {
+                    press(&mut app, KeyCode::Enter);
+                }
+                std::thread::sleep(Duration::from_millis(2));
+            }
+        }
+        // Every situation was seen: waiting for others, an all-in run-out, folded.
+        assert!(
+            waiting > 0 && runout > 0 && folded > 0,
+            "waiting {} run-out {} folded {}",
+            waiting,
+            runout,
+            folded
+        );
     }
 
     #[test]

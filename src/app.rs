@@ -155,10 +155,11 @@ pub struct RaisePrompt {
     pub error: Option<String>,
 }
 
-/// A cached win-chance estimate for the player's current decision.
+/// A cached win-chance estimate for your hand as it stands.
 #[derive(Clone, Debug)]
 pub struct Hint {
-    key: (u32, usize, u32, u32),
+    /// What the estimate depends on (see [`hint_key`]).
+    key: HintKey,
     pub win: f32,
     pub opponents: usize,
 }
@@ -226,6 +227,31 @@ const PAGE: usize = 10;
 const MAX_ADDRESS: usize = 100;
 /// Longest amount the raise box accepts (9 digits always fit in a u32).
 const MAX_AMOUNT_DIGITS: usize = 9;
+
+/// What a win-chance estimate depends on: the hand, how many board cards are
+/// out, and how many opponents are still in.
+type HintKey = (u32, usize, usize);
+
+/// The estimate the view calls for, if any: while the hand is being played and
+/// you are still in it (on your turn or not, and also when you are all-in).
+fn hint_key(v: &TableView) -> Option<HintKey> {
+    let me = &v.seats[v.you?];
+    let playing = matches!(v.state, State::Betting | State::Runout);
+    if !playing || !me.in_hand || me.folded || me.cards.len() != 2 {
+        return None;
+    }
+    Some((v.hand_no, v.board.len(), opponents_in(v)))
+}
+
+/// Opponents still in the hand (at least 1).
+fn opponents_in(v: &TableView) -> usize {
+    v.seats
+        .iter()
+        .enumerate()
+        .filter(|(i, s)| Some(*i) != v.you && s.in_hand && !s.folded)
+        .count()
+        .max(1)
+}
 
 /// Moves `index` by `delta` within `0..len`, wrapping around at both ends.
 fn cycle(index: usize, len: usize, delta: i32) -> usize {
@@ -370,6 +396,15 @@ impl App {
     /// The hint is wanted and allowed.
     pub fn hints_on(&self) -> bool {
         self.show_odds && self.hints_allowed()
+    }
+
+    /// The win-chance hint to show now: wanted, allowed, and computed for
+    /// exactly the hand as it stands (never an estimate from an earlier street).
+    pub fn current_hint(&self) -> Option<&Hint> {
+        let key = hint_key(self.view()?)?;
+        self.hint
+            .as_ref()
+            .filter(|h| self.hints_on() && h.key == key)
     }
 
     pub fn volume_label(&self) -> String {
@@ -572,18 +607,11 @@ impl App {
         };
         let my_turn = v.legal.is_some();
         let pot = v.pot;
-        let key = (v.hand_no, v.board.len(), v.current_bet, v.pot);
-        let hint_needed =
-            my_turn && self.hints_on() && self.hint.as_ref().is_none_or(|h| h.key != key);
+        let key = hint_key(v).filter(|_| self.hints_on());
+        let hint_needed = key.is_some_and(|k| self.hint.as_ref().is_none_or(|h| h.key != k));
         let me = v.you.map(|s| v.seats[s].cards.clone()).unwrap_or_default();
         let board = v.board.clone();
-        let opponents = v
-            .seats
-            .iter()
-            .enumerate()
-            .filter(|(i, s)| Some(*i) != v.you && s.in_hand && !s.folded)
-            .count()
-            .max(1);
+        let opponents = opponents_in(v);
         if my_turn && !self.my_turn {
             self.sound.play(Cue::Turn, 120);
         }
@@ -592,7 +620,7 @@ impl App {
             self.pot_flash = Some(Instant::now());
         }
         self.last_pot = pot;
-        if hint_needed && me.len() == 2 {
+        if hint_needed && let Some(key) = key {
             let samples = self.config.client.hint_samples;
             let win = bot::equity(&me, &board, opponents, samples, &mut self.hint_rng);
             self.hint = Some(Hint {

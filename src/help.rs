@@ -772,8 +772,8 @@ pub fn pages(facts: &Facts) -> Vec<Page> {
                 P(
                     "Win chance",
                     format!(
-                        "the optional hint (settings, key {}; a table may not allow it): how often \
-                 your hand would win against the same \
+                        "the optional hint (settings, key {}; a table may not allow it), shown \
+                 while you are in a hand: how often your hand would win against the same \
                  number of opponents holding random cards, estimated by dealing out \
                  thousands of random boards. Real opponents who bet usually hold better than \
                  random cards, so treat it as a rough guide. Calling tends to pay off when \

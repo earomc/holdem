@@ -322,7 +322,7 @@ const DOCS: &[(&str, &str)] = &[
     (
         "client.win_chance_hint",
         "The win-chance hint, where the table allows it.\n\
-         true: shown when it is your turn\n\
+         true: shown while you are in a hand\n\
          false: hidden (switch it on in the settings, key S)",
     ),
     (
