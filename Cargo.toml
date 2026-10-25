@@ -1,6 +1,6 @@
 [package]
 name = "holdem"
-version = "0.5.0"
+version = "0.5.1"
 edition = "2024"
 description = "No-limit Texas Hold'em in the terminal: bots, table options, LAN and internet multiplayer (ratatui)"
 license = "MIT"

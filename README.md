@@ -274,7 +274,7 @@ The in-game help has the same explanations, plus the hand rankings and the rules
 | Uncalled bet | Chips nobody matched; they are returned to the bettor. |
 | Under the gun | The first player to act before the flop, left of the big blind (or of the straddle). |
 | Wheel | 5 4 3 2 A, the lowest straight. |
-| Win chance | The optional hint (in the settings, key `S`; a table may not allow it): how often your hand would win against the same number of opponents holding random cards, estimated by dealing thousands of random boards. A rough guide only. |
+| Win chance | The optional hint (in the settings, key `S`; a table may not allow it), shown while you are in a hand: how often your hand would win against the same number of opponents holding random cards, estimated by dealing thousands of random boards. A rough guide only. |
 | Worth N big blinds | Shown under the pot: its size divided by the big blind, i.e. how big the pot is compared with what it costs to play a hand. Players think in big blinds because chip amounts mean little once the blinds rise. |
 
 **Opponent styles** (revealed in the final standings):
