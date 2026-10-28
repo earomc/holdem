@@ -6,6 +6,8 @@ All notable changes to holdem. The format follows
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-28
+
 ### Added
 - One server, several tables: `holdem serve` runs every `[[tables]]` entry of `holdem.toml`
   on the one port. Players see each table on their join screen, or choose from the server's
@@ -70,7 +72,8 @@ All notable changes to holdem. The format follows
 
 Versions before 0.6.0 are not listed here.
 
-[Unreleased]: https://github.com/earomc/holdem/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/earomc/holdem/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/earomc/holdem/releases/tag/v0.8.0
 [0.7.0]: https://github.com/earomc/holdem/releases/tag/v0.7.0
 [0.6.1]: https://github.com/earomc/holdem/releases/tag/v0.6.1
 [0.6.0]: https://github.com/earomc/holdem/releases/tag/v0.6.0
