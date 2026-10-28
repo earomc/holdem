@@ -13,6 +13,7 @@
 //! time passing) and `views` (what each client is sent).
 
 use std::collections::BTreeMap;
+use std::fmt;
 use std::sync::mpsc::Sender;
 use std::time::Instant;
 
@@ -106,6 +107,72 @@ pub struct Table {
     hand_over_since: Option<Instant>,
     dirty: bool,
     shown_seconds: (Option<u32>, Option<u32>),
+    /// What happened, for the person running the table ([`Table::take_notes`]).
+    notes: Vec<TableEvent>,
+}
+
+/// Something the person running a table may want to know. `holdem serve`
+/// prints these.
+#[derive(Clone, Debug, PartialEq)]
+pub enum TableEvent {
+    /// Someone joined; `people` are now connected.
+    Joined {
+        name: String,
+        people: usize,
+    },
+    /// Someone came back after a dropped connection and has their seat again.
+    Returned {
+        name: String,
+    },
+    /// Someone left or lost the connection; `people` are still connected.
+    Left {
+        name: String,
+        people: usize,
+    },
+    /// A program with an incompatible version was turned away.
+    TurnedAway {
+        reason: String,
+    },
+    GameStarted {
+        people: usize,
+        bots: usize,
+    },
+    /// The game ended; the winner, if anyone is left.
+    GameOver {
+        winner: Option<String>,
+    },
+}
+
+impl fmt::Display for TableEvent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let people = |n: usize| {
+            if n == 1 {
+                "1 person".to_string()
+            } else {
+                format!("{n} people")
+            }
+        };
+        match self {
+            TableEvent::Joined { name, people: n } => {
+                write!(f, "{name} joined ({} connected)", people(*n))
+            }
+            TableEvent::Returned { name } => write!(f, "{name} is back"),
+            TableEvent::Left { name, people: n } => {
+                write!(f, "{name} left ({} connected)", people(*n))
+            }
+            TableEvent::TurnedAway { reason } => write!(f, "Turned a player away: {reason}"),
+            TableEvent::GameStarted { people: n, bots } => {
+                write!(f, "Game started: {}", people(*n))?;
+                match bots {
+                    0 => Ok(()),
+                    1 => write!(f, " and 1 bot"),
+                    b => write!(f, " and {b} bots"),
+                }
+            }
+            TableEvent::GameOver { winner: Some(name) } => write!(f, "Game over: {name} wins"),
+            TableEvent::GameOver { winner: None } => write!(f, "Game over"),
+        }
+    }
 }
 
 impl Table {
@@ -124,7 +191,21 @@ impl Table {
             hand_over_since: None,
             dirty: true,
             shown_seconds: (None, None),
+            notes: Vec::new(),
         }
+    }
+
+    /// What happened since the last call, oldest first.
+    pub fn take_notes(&mut self) -> Vec<TableEvent> {
+        std::mem::take(&mut self.notes)
+    }
+
+    fn note(&mut self, event: TableEvent) {
+        // Nobody may be reading these: keep only the most recent ones.
+        if self.notes.len() >= 1000 {
+            self.notes.remove(0);
+        }
+        self.notes.push(event);
     }
 
     pub fn game(&self) -> Option<&Game> {

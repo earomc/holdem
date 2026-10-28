@@ -51,7 +51,8 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/earomc/holdem/releases/
 powershell -ExecutionPolicy Bypass -c "irm https://github.com/earomc/holdem/releases/latest/download/holdem-server-installer.ps1 | iex"
 ```
 
-On a server, start a table with `holdem serve` (see [Playing](docs/playing.md#a-server-anyone-can-join)).
+On a server, start a table with `holdem serve`; [Running a server](docs/server.md) explains
+the rest.
 
 ## Quick start
 
@@ -70,6 +71,8 @@ needs to be at least 80×23 (80×28 with six or more players).
   playing style.
 - [Poker rules and terms](docs/poker.md): the rules implemented, a glossary, the bot styles.
 - [Configuration](docs/configuration.md): the settings file and the command line.
+- [Running a server](docs/server.md): `holdem serve`, the network, its log, running it as a
+  service.
 - [Contributing](CONTRIBUTING.md): building, tests, releasing, how the code is organized.
 - [Changelog](CHANGELOG.md): what changed in each version.
 

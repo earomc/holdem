@@ -12,6 +12,9 @@ All notable changes to holdem. The format follows
   settings change; comments and the rest of the file stay.
 - holdem also looks for `holdem.toml` in your own settings folder (`%APPDATA%\holdem`,
   `~/Library/Application Support/holdem` or `~/.config/holdem`); saving creates it there.
+- `holdem serve` prints what happens at the table, with the time: people joining, leaving and
+  coming back, games starting and ending, programs turned away for their version.
+- [Running a server](docs/server.md): installing, the network, the log, a systemd service.
 
 ### Changed
 - `holdem config write --force` keeps the values of the file it replaces.

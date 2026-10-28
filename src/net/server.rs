@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 use super::{Connection, Outgoing, Parsed, parse_message, read_line};
 use crate::card::Rng;
 use crate::protocol::{Announcement, ClientMsg, DISCOVERY_REQUEST, ServerMsg};
-use crate::table::{ClientId, Table, TableSettings};
+use crate::table::{ClientId, Table, TableEvent, TableSettings};
 
 /// Longest line a server accepts from a client.
 pub(super) const MAX_CLIENT_LINE: u64 = 16 * 1024;
@@ -49,6 +49,29 @@ impl Server {
     /// Starts a table. With `port`, it also listens for network players on that
     /// port (0 picks a free one) and answers LAN discovery.
     pub fn start(settings: TableSettings, port: Option<u16>, seed: u64) -> io::Result<Server> {
+        Server::start_inner(settings, port, seed, None)
+    }
+
+    /// Like [`Server::start`], and also reports what happens at the table
+    /// (people joining and leaving, games starting and ending).
+    pub fn start_logged(
+        settings: TableSettings,
+        port: Option<u16>,
+        seed: u64,
+    ) -> io::Result<(Server, Receiver<TableEvent>)> {
+        let (log, events) = mpsc::channel();
+        Ok((
+            Server::start_inner(settings, port, seed, Some(log))?,
+            events,
+        ))
+    }
+
+    fn start_inner(
+        settings: TableSettings,
+        port: Option<u16>,
+        seed: u64,
+        log: Option<Sender<TableEvent>>,
+    ) -> io::Result<Server> {
         let (tx, rx) = mpsc::channel::<Inbound>();
         let stop = Arc::new(AtomicBool::new(false));
         let next_id = Arc::new(AtomicU64::new(1));
@@ -76,7 +99,7 @@ impl Server {
         let (stop2, announce_port, shared) =
             (stop.clone(), bound_port.unwrap_or(0), announcement.clone());
         threads.push(thread::spawn(move || {
-            table_loop(table, rx, stop2, shared, announce_port)
+            table_loop(table, rx, stop2, shared, announce_port, log)
         }));
         Ok(Server {
             inbound: tx,
@@ -131,6 +154,7 @@ fn table_loop(
     stop: Arc<AtomicBool>,
     announcement: Arc<Mutex<Option<Announcement>>>,
     port: u16,
+    log: Option<Sender<TableEvent>>,
 ) {
     while !stop.load(Ordering::Relaxed) {
         match rx.recv_timeout(TICK) {
@@ -154,6 +178,11 @@ fn table_loop(
         let now = Instant::now();
         table.tick(now);
         table.flush(now);
+        for event in table.take_notes() {
+            if let Some(log) = &log {
+                let _ = log.send(event);
+            }
+        }
         if let Ok(mut a) = announcement.lock() {
             *a = Some(table.announcement(port));
         }

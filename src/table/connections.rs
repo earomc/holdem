@@ -2,7 +2,7 @@
 
 use std::sync::mpsc::Sender;
 
-use super::{Client, ClientId, Table};
+use super::{Client, ClientId, Table, TableEvent};
 use crate::protocol::{
     APP_VERSION, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION, ServerMsg, clean_name, negotiate,
 };
@@ -32,9 +32,14 @@ impl Table {
             return;
         };
         c.connected = false;
+        let left = c.joined.then(|| c.name.clone());
         let seated = c.seat.is_some() && self.game.is_some();
         if !seated {
             self.clients.remove(&id);
+        }
+        if let Some(name) = left {
+            let people = self.connected_people();
+            self.note(TableEvent::Left { name, people });
         }
         // A seated player keeps the seat until the hand ends: they fold when it
         // is their turn and leave the table before the next hand.
@@ -51,10 +56,12 @@ impl Table {
         let agreed = match negotiate(version, min_version) {
             Ok(v) => v,
             Err(mismatch) => {
+                let reason = mismatch.to_client();
                 if let Some(c) = self.clients.get_mut(&id) {
-                    let _ = c.outbox.send(ServerMsg::Goodbye(mismatch.to_client()));
+                    let _ = c.outbox.send(ServerMsg::Goodbye(reason.clone()));
                     c.drop = true;
                 }
+                self.note(TableEvent::TurnedAway { reason });
                 return;
             }
         };
@@ -73,6 +80,8 @@ impl Table {
             c.seat = prev.seat;
             c.spectator = prev.spectator;
             c.joined = true;
+            let name = c.name.clone();
+            self.note(TableEvent::Returned { name });
         } else {
             let taken: Vec<String> = self
                 .clients
@@ -93,9 +102,14 @@ impl Table {
                 k += 1;
             }
             if let Some(c) = self.clients.get_mut(&id) {
-                c.name = unique;
+                c.name = unique.clone();
                 c.joined = true;
             }
+            let people = self.connected_people();
+            self.note(TableEvent::Joined {
+                name: unique,
+                people,
+            });
         }
         if let Some(c) = self.clients.get(&id) {
             let _ = c.outbox.send(ServerMsg::Welcome {

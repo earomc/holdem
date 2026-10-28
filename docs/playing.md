@@ -24,7 +24,8 @@ port 7777 (or the port in `holdem.toml`) to your computer in your router.
 on), using the `[game]` and `[server]` settings of `holdem.toml`
 ([Configuration](configuration.md)). `--port`, `--name` and `--speed` override single values,
 and on start-up it prints every setting it uses and the file they came from. After each game
-the table goes back to its lobby.
+the table goes back to its lobby. [Running a server](server.md) covers
+installing, the network, the log and running it as a service.
 
 ### Joining
 

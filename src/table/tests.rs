@@ -449,3 +449,32 @@ fn a_pause_does_not_eat_into_the_time_to_act() {
     let left = host.view.unwrap().turn_seconds_left.unwrap();
     assert!((24..=25).contains(&left), "{left} seconds left");
 }
+
+#[test]
+fn the_table_notes_who_comes_and_goes() {
+    let now = Instant::now();
+    let mut t = Table::new(settings(), Rng::seeded(3));
+    let _ann = join(&mut t, 1, "Ann", false, now);
+    let _ben = join(&mut t, 2, "Ben", false, now);
+    t.disconnect(2);
+    t.handle(1, ClientMsg::Ready, now);
+    assert_eq!(
+        t.take_notes(),
+        [
+            TableEvent::Joined {
+                name: "Ann".to_string(),
+                people: 1
+            },
+            TableEvent::Joined {
+                name: "Ben".to_string(),
+                people: 2
+            },
+            TableEvent::Left {
+                name: "Ben".to_string(),
+                people: 1
+            },
+            TableEvent::GameStarted { people: 1, bots: 3 },
+        ]
+    );
+    assert!(t.take_notes().is_empty(), "each note is reported once");
+}

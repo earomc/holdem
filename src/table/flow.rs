@@ -3,10 +3,10 @@
 
 use std::time::{Duration, Instant};
 
-use super::{Client, ClientId, Table};
+use super::{Client, ClientId, Table, TableEvent};
 use crate::bot::{self, Personality};
 use crate::card::Rng;
-use crate::game::{Action, Game, MIN_PLAYERS, State};
+use crate::game::{Action, Game, GameEvent, MIN_PLAYERS, State};
 
 impl Table {
     pub(super) fn back_to_lobby(&mut self) {
@@ -81,6 +81,10 @@ impl Table {
             c.events.clear();
         }
         self.game = Some(g);
+        self.note(TableEvent::GameStarted {
+            people: humans,
+            bots: total - humans,
+        });
         self.start_next_hand(now);
     }
 
@@ -217,6 +221,14 @@ impl Table {
         let events = g.take_events();
         if events.is_empty() {
             return;
+        }
+        if events.contains(&GameEvent::TournamentOver) {
+            let winner = g
+                .standings()
+                .into_iter()
+                .find(|s| s.place == Some(1))
+                .map(|s| s.name);
+            self.note(TableEvent::GameOver { winner });
         }
         for c in self.clients.values_mut() {
             c.events.extend_from_slice(&events);

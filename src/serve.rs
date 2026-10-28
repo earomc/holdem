@@ -1,7 +1,8 @@
 //! `holdem serve`: a table with no player of its own, and what it prints.
 
 use std::path::Path;
-use std::time::Duration;
+use std::sync::mpsc::RecvTimeoutError;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use holdem::config::Config;
 use holdem::game::chips_text;
@@ -188,7 +189,7 @@ pub(crate) fn run_server(
         overrides.push(format!("--seed {s}"));
     }
     let seed = seed.unwrap_or_else(|| holdem::card::Rng::from_entropy().next_u64());
-    let server = Server::start(settings.clone(), Some(port), seed)
+    let (server, events) = Server::start_logged(settings.clone(), Some(port), seed)
         .map_err(|e| format!("could not listen on port {port}: {e}"))?;
     let port = server.port.unwrap_or(port);
     println!("holdem {APP_VERSION} ({BUILD}) server is running.\n");
@@ -199,28 +200,50 @@ pub(crate) fn run_server(
     println!(
         "\nFor players on the internet, forward TCP port {port} to this computer. Press Ctrl-C to stop.\n"
     );
-    let mut last = None;
+    // One line per event, with the time (UTC), until the table stops.
     while server.is_running() {
-        std::thread::sleep(Duration::from_secs(1));
-        let status = server.status();
-        let summary = status.as_ref().map(|a| (a.players, a.playing));
-        if summary != last {
-            if let Some(a) = status {
-                println!(
-                    "{} {} connected",
-                    if a.playing { "Game running:" } else { "Lobby:" },
-                    a.players
-                );
-            }
-            last = summary;
+        match events.recv_timeout(Duration::from_secs(1)) {
+            Ok(event) => println!("{}  {event}", clock(SystemTime::now())),
+            Err(RecvTimeoutError::Timeout) => {}
+            Err(RecvTimeoutError::Disconnected) => break,
         }
     }
     Ok(())
 }
 
+/// The time of day in UTC as HH:MM:SS, without a time-zone library.
+fn clock(at: SystemTime) -> String {
+    let seconds = at.duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs()) % 86_400;
+    format!(
+        "{:02}:{:02}:{:02}",
+        seconds / 3600,
+        seconds / 60 % 60,
+        seconds % 60
+    )
+}
+
 #[cfg(test)]
 mod tests {
+    use holdem::table::TableEvent;
+
     use super::*;
+
+    #[test]
+    fn the_log_shows_the_time_and_what_happened() {
+        let at = UNIX_EPOCH + Duration::from_secs(19 * 86_400 + 3 * 3600 + 4 * 60 + 5);
+        assert_eq!(clock(at), "03:04:05");
+        let joined = TableEvent::Joined {
+            name: "Ann".to_string(),
+            people: 1,
+        };
+        assert_eq!(joined.to_string(), "Ann joined (1 person connected)");
+        let started = TableEvent::GameStarted { people: 2, bots: 4 };
+        assert_eq!(started.to_string(), "Game started: 2 people and 4 bots");
+        let over = TableEvent::GameOver {
+            winner: Some("Ann".to_string()),
+        };
+        assert_eq!(over.to_string(), "Game over: Ann wins");
+    }
 
     #[test]
     fn the_server_report_shows_every_setting_and_its_source() {
