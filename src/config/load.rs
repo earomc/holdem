@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use super::{Config, FILE_NAME};
+use super::{Config, Error, FILE_NAME};
 use crate::game::{MAX_PLAYERS, MIN_PLAYERS, Rules};
 
 /// `holdem.toml` in your own settings folder: `%APPDATA%\holdem` on Windows,
@@ -63,15 +63,15 @@ fn check_list(name: &str, values: &[u32], allow_zero: bool) -> Result<(), String
 
 impl Config {
     /// Parses a configuration file's text.
-    pub fn parse(text: &str) -> Result<Config, String> {
+    pub fn parse(text: &str) -> Result<Config, Error> {
         let config: Config = toml::from_str(text).map_err(|e| {
-            format!(
+            Error::Parse(format!(
                 "{e}\n(A file written by an older holdem may use old setting names: \
                  `holdem config write new.toml` writes the current format.)"
-            )
+            ))
         })?;
-        check_rule_keys(text)?;
-        config.check()?;
+        check_rule_keys(text).map_err(Error::Parse)?;
+        config.check().map_err(Error::Invalid)?;
         Ok(config)
     }
 
@@ -197,15 +197,14 @@ impl Config {
     }
 
     /// Reads and checks one settings file.
-    pub fn read(path: &Path) -> Result<Config, String> {
-        let text =
-            std::fs::read_to_string(path).map_err(|e| format!("{}: {}", path.display(), e))?;
-        Config::parse(&text).map_err(|e| format!("{}: {}", path.display(), e))
+    pub fn read(path: &Path) -> Result<Config, Error> {
+        let text = std::fs::read_to_string(path).map_err(|e| Error::Io(e).in_file(path))?;
+        Config::parse(&text).map_err(|e| e.in_file(path))
     }
 
     /// Loads the settings from the file [`Config::locate`] picks, or the
     /// defaults if there is none. Returns the file that was used, if any.
-    pub fn load(path: Option<&Path>) -> Result<(Config, Option<PathBuf>), String> {
+    pub fn load(path: Option<&Path>) -> Result<(Config, Option<PathBuf>), Error> {
         match Config::locate(path) {
             Some(file) => Ok((Config::read(&file)?, Some(file))),
             None => Ok((Config::default(), None)),

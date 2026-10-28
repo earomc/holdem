@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 
 use toml_edit::DocumentMut;
 
-use super::Config;
+use super::{Config, Error};
 
 /// The settings the game can change and save: your own ones from the settings
 /// window and the setup screen, and the table options of the setup screen.
@@ -54,22 +54,21 @@ pub struct SaveReport {
 /// Saves the [`SAVED_KEYS`] of `config` to the file at `path`, creating the file
 /// and its folder if needed. Writes nothing when the file already holds these
 /// values (or, for a missing file, when they are all defaults).
-pub fn save(path: &Path, config: &Config) -> Result<SaveReport, String> {
-    let at = |e: &dyn std::fmt::Display| format!("{}: {}", path.display(), e);
+pub fn save(path: &Path, config: &Config) -> Result<SaveReport, Error> {
     let existing = match std::fs::read_to_string(path) {
         Ok(text) => Some(text),
         Err(e) if e.kind() == ErrorKind::NotFound => None,
-        Err(e) => return Err(at(&e)),
+        Err(e) => return Err(Error::Io(e).in_file(path)),
     };
     let saved = match &existing {
-        Some(text) => Config::parse(text).map_err(|e| at(&e))?,
+        Some(text) => Config::parse(text).map_err(|e| e.in_file(path))?,
         None => Config::default(),
     };
     let mut doc: DocumentMut = existing
         .as_deref()
         .unwrap_or("")
         .parse()
-        .map_err(|e| at(&e))?;
+        .map_err(|e: toml_edit::TomlError| Error::Parse(e.to_string()).in_file(path))?;
 
     let wanted = as_table(config);
     let in_file = as_table(&saved);
@@ -100,8 +99,9 @@ pub fn save(path: &Path, config: &Config) -> Result<SaveReport, String> {
         Some(_) => doc.to_string(),
         None => format!("{HEADER}\n{doc}"),
     };
-    Config::parse(&text).map_err(|e| at(&format!("the saved file would not load: {e}")))?;
-    write_atomically(path, &text).map_err(|e| at(&e))?;
+    Config::parse(&text)
+        .map_err(|e| Error::Invalid(format!("the saved file would not load: {e}")).in_file(path))?;
+    write_atomically(path, &text).map_err(|e| Error::Io(e).in_file(path))?;
     Ok(SaveReport {
         changed,
         created: existing.is_none(),
@@ -278,7 +278,7 @@ seats = 6   # the default, but written down
         let path = scratch("invalid");
         let mut config = Config::default();
         config.game.seats = 1;
-        let error = save(&path, &config).unwrap_err();
+        let error = save(&path, &config).unwrap_err().to_string();
         assert!(error.contains("would not load"), "{error}");
         assert!(!path.exists());
     }

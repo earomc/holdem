@@ -53,7 +53,7 @@ pub(crate) fn run_config(action: &ConfigAction, chosen: Option<&Path>) -> Result
             println!("Wrote {}", absolute(path.to_path_buf()).display());
         }
         ConfigAction::Show => {
-            let (config, source) = Config::load(chosen)?;
+            let (config, source) = Config::load(chosen).map_err(|e| e.to_string())?;
             println!(
                 "# Settings from {}\n",
                 source_text(source.map(absolute).as_deref())
@@ -65,7 +65,7 @@ pub(crate) fn run_config(action: &ConfigAction, chosen: Option<&Path>) -> Result
                 println!("{}", source_text(None));
                 return Ok(());
             };
-            let config = Config::read(&path)?;
+            let config = Config::read(&path).map_err(|e| e.to_string())?;
             let changed = config::differences(&config);
             println!(
                 "{} is fine: {}",

@@ -39,6 +39,23 @@ style is recognized from its own play: on samples of 200 hands, the right style 
 83% of the time and is among the top two 98% of the time. Neighbours such as Rock and Nit are
 genuinely similar.
 
+## Before you send a change
+
+CI checks every push and pull request; locally, the same checks are:
+
+```
+cargo fmt --check
+cargo clippy -p holdem --all-targets -- -D warnings
+cargo clippy -p holdem-server --all-targets -- -D warnings
+cargo test -p holdem
+cargo test -p holdem-server
+```
+
+- Anything people will notice gets a line under *Unreleased* in `CHANGELOG.md`.
+- A change to the glossary or the bot styles: run
+  `HOLDEM_UPDATE_DOCS=1 cargo test -p holdem docs` to update `docs/poker.md`.
+- A change to how a screen looks: redraw the screenshots (below).
+
 ## Screenshots
 
 The pictures in `docs/screenshots/` are drawn by the game itself, so they always show the

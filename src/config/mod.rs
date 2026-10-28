@@ -33,10 +33,12 @@ use crate::stats::{MIN_HANDS, MIN_STACK_BB};
 use crate::table::{Fluctuation, TableSettings};
 
 mod docs;
+mod error;
 mod load;
 mod render;
 mod save;
 
+pub use error::Error;
 pub use load::user_file;
 pub use render::{differences, render, template};
 pub use save::{SAVED_KEYS, SaveReport, save};
@@ -510,10 +512,14 @@ mod tests {
         for text in bad {
             assert!(Config::parse(text).is_err(), "accepted: {text}");
         }
-        let e = Config::parse("[game.rules]\nantez = true\n").unwrap_err();
+        let e = Config::parse("[game.rules]\nantez = true\n")
+            .unwrap_err()
+            .to_string();
         assert!(e.contains("antez") && e.contains("ante_divisor"), "{}", e);
         // A file from an older holdem gets a hint about the new format.
-        let e = Config::parse("[speed]\nfast_ms = 100\n").unwrap_err();
+        let e = Config::parse("[speed]\nfast_ms = 100\n")
+            .unwrap_err()
+            .to_string();
         assert!(e.contains("config write"), "{}", e);
     }
 
