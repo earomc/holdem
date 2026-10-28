@@ -9,6 +9,8 @@ All notable changes to holdem. The format follows
 ### Added
 - MIT `LICENSE` file, also included in the release archives.
 - `CHANGELOG.md`; its section for a version becomes the release notes.
+- A *Your name* row on the setup screen, for games against bots and hosted games. It starts
+  with `client.name` from `holdem.toml` (or your login name) and is shared with the join screen.
 
 ### Changed
 - The README is shorter; the details moved to `docs/` and `CONTRIBUTING.md`.

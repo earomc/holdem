@@ -79,6 +79,8 @@ pub enum Screen {
 /// The rows of the game setup screen.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SetupRow {
+    /// Your name at the table, typed in place (the same one the join screen uses).
+    Name,
     Seats,
     FillWithBots,
     Chips,
@@ -94,7 +96,8 @@ pub enum SetupRow {
     WinChance,
 }
 
-pub const SETUP_ROWS: [SetupRow; 13] = [
+pub const SETUP_ROWS: [SetupRow; 14] = [
+    SetupRow::Name,
     SetupRow::Seats,
     SetupRow::FillWithBots,
     SetupRow::Chips,
@@ -883,7 +886,9 @@ impl App {
             Some(Cmd::Select) => match MenuItem::ALL[self.menu_row] {
                 item @ (MenuItem::Solo | MenuItem::Host) => {
                     self.setup.host = item == MenuItem::Host;
-                    self.setup.row = 0;
+                    // Start below the name, which is usually right already, so
+                    // that Q still goes straight back.
+                    self.setup.row = 1;
                     self.screen = Screen::Setup;
                 }
                 MenuItem::Join => {
@@ -905,6 +910,16 @@ impl App {
         let rows = self.setup.rows();
         let n = rows.len();
         let row = rows[self.setup.row.min(n - 1)];
+        // On the name row, letters are typed: Q, ? and H too.
+        if row == SetupRow::Name
+            && let KeyCode::Char(c) = code
+            && !c.is_control()
+        {
+            if self.join.name.chars().count() < MAX_NAME {
+                self.join.name.push(c);
+            }
+            return;
+        }
         match keys::command(Place::Setup, code) {
             Some(Cmd::Up) => {
                 self.setup.row = cycle(self.setup.row, n, -1);
@@ -916,6 +931,13 @@ impl App {
             }
             Some(Cmd::Left) => self.setup_change(row, -1),
             Some(Cmd::Right) => self.setup_change(row, 1),
+            Some(Cmd::Erase) if row == SetupRow::Name => {
+                self.join.name.pop();
+            }
+            Some(Cmd::Select) if self.join.name.trim().is_empty() => {
+                self.notify("Type your name first.".to_string());
+                self.setup.row = 0;
+            }
             Some(Cmd::Select) => self.start_game(),
             Some(Cmd::Back) => self.screen = Screen::Menu,
             Some(cmd) => self.common(cmd),
@@ -928,6 +950,8 @@ impl App {
         let s = &mut self.setup;
         let r = &mut s.rules;
         match row {
+            // Typed, not stepped.
+            SetupRow::Name => return,
             SetupRow::Seats => {
                 s.seats =
                     (s.seats as i32 + delta).clamp(MIN_PLAYERS as i32, MAX_PLAYERS as i32) as usize
@@ -1232,6 +1256,45 @@ mod tests {
         assert!(!app.setup.rows().contains(&SetupRow::FillWithBots));
         app.setup.host = true;
         assert!(app.setup.rows().contains(&SetupRow::FillWithBots));
+    }
+
+    #[test]
+    fn the_name_is_typed_on_the_setup_screen() {
+        let mut config = Config::default();
+        config.client.name = "Mo".to_string();
+        let mut app = App::new(config, Some(1), Sound::new(true));
+        let press = |app: &mut App, code| app.on_key(KeyEvent::new(code, KeyModifiers::NONE));
+        press(&mut app, KeyCode::Enter); // Play against bots
+        assert_eq!(app.screen, Screen::Setup);
+        assert_eq!(
+            app.setup.rows()[app.setup.row],
+            SetupRow::Seats,
+            "starts below the name"
+        );
+        assert_eq!(app.join.name, "Mo", "the configured name");
+
+        press(&mut app, KeyCode::Up);
+        for c in "Qh?".chars() {
+            press(&mut app, KeyCode::Char(c));
+        }
+        assert_eq!(app.join.name, "MoQh?", "letters are typed, not commands");
+        assert_eq!(app.screen, Screen::Setup);
+        assert!(!app.show_help);
+
+        for _ in 0..5 {
+            press(&mut app, KeyCode::Backspace);
+        }
+        press(&mut app, KeyCode::Enter);
+        assert_eq!(app.screen, Screen::Setup, "no game without a name");
+        assert_eq!(app.setup.row, 0);
+
+        for c in "Ann".chars() {
+            press(&mut app, KeyCode::Char(c));
+        }
+        press(&mut app, KeyCode::Down);
+        press(&mut app, KeyCode::Char('q'));
+        assert_eq!(app.screen, Screen::Menu, "Q goes back on the other rows");
+        assert_eq!(app.join.name, "Ann", "the join screen uses the same name");
     }
 
     #[test]

@@ -424,6 +424,12 @@ fn setup_row_text(app: &App, row: SetupRow) -> (&'static str, String, String) {
     let r = &s.rules;
     let settings = key_for(Place::Table, Cmd::Settings);
     match row {
+        SetupRow::Name => (
+            "Your name",
+            app.join.name.clone(),
+            "Type your name for this table; the default comes from client.name in holdem.toml."
+                .to_string(),
+        ),
         SetupRow::Seats => (
             "Seats",
             if s.host {
@@ -539,7 +545,10 @@ fn draw_setup(frame: &mut Frame, app: &App, area: Rect) {
     let mut lines: Vec<Line> = vec![Line::from("")];
     for (i, row) in rows.iter().enumerate().skip(first).take(visible) {
         let (label, value, _) = setup_row_text(app, *row);
-        let text = if i == selected {
+        let text = if i == selected && *row == SetupRow::Name {
+            // Typed in place: a cursor instead of the ◀ ▶ of stepped values.
+            format!(" ▶ {:<21}  {}▏", label, value)
+        } else if i == selected {
             format!(" ▶ {:<21}◀ {} ▶", label, value)
         } else {
             format!("   {:<21}  {}", label, value)
@@ -583,7 +592,20 @@ fn draw_setup(frame: &mut Frame, app: &App, area: Rect) {
         key_for(Place::Setup, Cmd::Select),
         if host { "open the table" } else { "deal" },
     );
-    lines.push(Line::from(reminder(&[start], Place::Setup)));
+    if rows[selected] == SetupRow::Name {
+        // Letters are typed here: no ←→, and only F1 opens the help.
+        let entries = keys::reminder_where(Place::Setup, |c| !matches!(c, Cmd::Left | Cmd::Help));
+        lines.push(Line::from(reminder_spans(
+            std::iter::once(start)
+                .chain(entries)
+                .chain(std::iter::once((
+                    keys::name(ratatui::crossterm::event::KeyCode::F(1)),
+                    "help",
+                ))),
+        )));
+    } else {
+        lines.push(Line::from(reminder(&[start], Place::Setup)));
+    }
     let title = if host {
         "Host a network game"
     } else {

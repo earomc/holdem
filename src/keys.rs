@@ -150,6 +150,11 @@ pub const SECTIONS: &[Section] = &[
                 "change it (the line below the list explains it)",
                 "change",
             ),
+            note(
+                "typing, Backspace",
+                &[(&[Backspace], Cmd::Erase)],
+                "edit your name (on that row, Q, ? and H are letters: F1 opens the help)",
+            ),
             row(
                 &[(&[Enter], Cmd::Select)],
                 "deal (or open your table to others when hosting)",

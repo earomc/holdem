@@ -45,7 +45,7 @@ Every key is also listed on the first page of the in-game help (`?`).
 | Where | Keys |
 | --- | --- |
 | Main menu | `↑` `↓` choose, `Enter` select, `?`/`H`/`F1` help, `Q`/`Esc` quit |
-| Setup | `↑` `↓` choose, `←` `→` change, `Enter` deal / open the table, `Esc`/`Q` back |
+| Setup | `↑` `↓` choose, `←` `→` change, type on the *Your name* row, `Enter` deal / open the table, `Esc`/`Q` back (on the name row only `Esc`, and `F1` for help) |
 | Join screen | `↑` `↓`/`Tab` move between name, address and found tables, type to edit, `Enter` join, `Esc` back or cancel, `F1` help |
 | Lobby | `Enter` ready / not ready, `S` settings, `?`/`H` help, `Q`/`Esc` leave |
 | Your turn | `F` fold, `C` check/call, `R`/`B` raise box, `A` all-in (press twice) |
