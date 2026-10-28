@@ -1,0 +1,31 @@
+# Changelog
+
+All notable changes to holdem. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
+[Semantic Versioning](https://semver.org/).
+
+## [Unreleased]
+
+### Added
+- MIT `LICENSE` file, also included in the release archives.
+- `CHANGELOG.md`; its section for a version becomes the release notes.
+
+### Changed
+- The README is shorter; the details moved to `docs/` and `CONTRIBUTING.md`.
+
+## [0.6.0] - 2026-10-28
+
+### Added
+- Prebuilt releases for Linux, macOS and Windows, with one-line installers.
+- A second release, `holdem-server`: the same program without sound and without any audio
+  libraries, for dedicated servers. It also comes as static musl builds for Linux.
+- `holdem --version` and `holdem --help` say whether the build has sound.
+
+### Changed
+- The `server` command is now `holdem serve`.
+- `--mute` only exists in the build with sound.
+
+Versions before 0.6.0 are not listed here.
+
+[Unreleased]: https://github.com/earomc/holdem/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/earomc/holdem/releases/tag/v0.6.0
