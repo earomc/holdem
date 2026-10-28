@@ -1,4 +1,4 @@
-//! Runs a [`Table`] on a background thread and connects clients to it, either
+//! Runs a [`Table`](crate::table::Table) on a background thread and connects clients to it, either
 //! through in-memory channels (your own seat) or over TCP (everyone else).
 //! Messages are JSON, one per line. A UDP responder on the same port answers
 //! LAN discovery broadcasts so people on the local network can find the table.

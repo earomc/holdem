@@ -30,7 +30,7 @@ impl Game {
     /// While a round is being bet, players who have not matched the bet yet
     /// still can, so a pot only ends where a live player is all-in: the
     /// separate pots are the ones all-ins have closed, plus the one still open.
-    /// (At the showdown [`compute_pots`] splits what everyone finally put in.)
+    /// (At the showdown [`compute_pots`](super::compute_pots) splits what everyone finally put in.)
     pub fn pots_now(&self) -> Vec<u32> {
         let mut levels: Vec<u32> = self
             .players
