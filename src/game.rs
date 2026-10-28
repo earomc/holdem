@@ -238,7 +238,7 @@ impl Rules {
         sb as u32
     }
 
-    // The rules in plain words, shared by the setup screen and `holdem server`.
+    // The rules in plain words, shared by the setup screen and `holdem serve`.
 
     /// "10/20": the small and big blind at the start.
     pub fn blinds_text(&self) -> String {

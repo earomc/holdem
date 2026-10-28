@@ -1,0 +1,40 @@
+[package]
+name = "holdem-server"
+description = "holdem without audio dependencies, for dedicated servers: the full game, just silent"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+# Builds the binary from ../src, which `cargo package` cannot include.
+publish = false
+
+# The same program as the `holdem` package, built without the `sound` feature.
+# The binary is called `holdem` as well; only the release archive and installer
+# are named after this package (holdem-server-<target>.tar.xz).
+[[bin]]
+name = "holdem"
+path = "../src/main.rs"
+
+[dependencies]
+holdem = { path = "..", default-features = false }
+ratatui.workspace = true
+unicode-width.workspace = true
+clap.workspace = true
+
+# src/sound.rs checks `feature = "sound"`, which this package never has.
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("sound"))'] }
+
+[package.metadata.dist]
+# cargo-dist skips `publish = false` packages unless told otherwise.
+dist = true
+# Static musl builds as well, for servers with an old or no glibc.
+targets = [
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-unknown-linux-musl",
+    "aarch64-unknown-linux-musl",
+    "x86_64-pc-windows-msvc",
+]

@@ -10,7 +10,7 @@
 //! * `[client]`: only your own screen and keys (name, sound, the values
 //!   offered on the setup screen, joining other tables).
 //! * `[game]`: how a table run by this program plays: seats, bots, speeds,
-//!   rules. Used for solo games, hosted games and `holdem server` alike.
+//!   rules. Used for solo games, hosted games and `holdem serve` alike.
 //! * `[server]`: network play only: table name, port, time limits.
 //!
 //! What is configurable: everything about the game's design. What is not: the
@@ -104,7 +104,7 @@ pub struct JoinConfig {
 
 // ------------------------------------------------------------------ [game]
 
-/// How a table run by this program plays (solo, hosted or `holdem server`).
+/// How a table run by this program plays (solo, hosted or `holdem serve`).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct GameConfig {
@@ -157,7 +157,7 @@ pub struct FluctuationConfig {
 
 // ------------------------------------------------------------------ [server]
 
-/// Network play: hosting from the menu and `holdem server`.
+/// Network play: hosting from the menu and `holdem serve`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct ServerConfig {
@@ -165,7 +165,7 @@ pub struct ServerConfig {
     pub name: String,
     /// Port to listen on; also the port the join screen assumes and searches.
     pub port: u16,
-    /// Speed of `holdem server` (one of `[[game.speeds]]`).
+    /// Speed of `holdem serve` (one of `[[game.speeds]]`).
     pub speed: String,
     /// Seconds a person has to act when several people play (0 = no limit).
     pub turn_seconds: u32,
@@ -386,7 +386,7 @@ const DOCS: &[(&str, &str)] = &[
     (
         "game",
         "How tables run by this program play: solo games, games you host, and\n\
-         `holdem server`. At someone else's table, that table's settings apply.",
+         `holdem serve`. At someone else's table, that table's settings apply.",
     ),
     ("game.seats", "Seats at the table, 2 to 9."),
     (
@@ -511,7 +511,7 @@ const DOCS: &[(&str, &str)] = &[
     ),
     (
         "server",
-        "Network play: hosting from the menu, and `holdem server`.",
+        "Network play: hosting from the menu, and `holdem serve`.",
     ),
     (
         "server.name",
@@ -523,7 +523,7 @@ const DOCS: &[(&str, &str)] = &[
     ),
     (
         "server.speed",
-        "The game speed of `holdem server`: one of the names in [[game.speeds]].\n\
+        "The game speed of `holdem serve`: one of the names in [[game.speeds]].\n\
          (When you host from the menu, your own speed setting is used.)",
     ),
     (
@@ -724,8 +724,8 @@ pub fn render(config: &Config) -> String {
          \n\
          [client]  your own screen and keys only\n\
          [game]    how tables run by this program play: solo games, games you host,\n\
-         \x20         and `holdem server`\n\
-         [server]  network play: hosting and `holdem server`",
+         \x20         and `holdem serve`\n\
+         [server]  network play: hosting and `holdem serve`",
     );
     render_table(&mut out, "", &current, &defaults);
     out
@@ -998,7 +998,7 @@ impl Config {
         &self.game.speeds[self.speed_index(name).unwrap_or(0)]
     }
 
-    /// Table settings for `holdem server`.
+    /// Table settings for `holdem serve`.
     pub fn server_table(&self) -> TableSettings {
         self.table_settings(&self.server.name, self.speed(&self.server.speed).ms, true)
     }

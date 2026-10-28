@@ -664,7 +664,7 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "holdem"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "clap",
  "ratatui",
@@ -672,6 +672,16 @@ dependencies = [
  "serde",
  "serde_json",
  "toml",
+ "unicode-width",
+]
+
+[[package]]
+name = "holdem-server"
+version = "0.6.0"
+dependencies = [
+ "clap",
+ "holdem",
+ "ratatui",
  "unicode-width",
 ]
 

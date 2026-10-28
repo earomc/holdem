@@ -6,20 +6,68 @@ over your home network or the internet. Optional table rules (antes, straddle, r
 button, mucking, a hand limit, players coming and going), synthesized sound effects, and an
 estimate of your own playing style.
 
+## Installing
+
+Every release comes in two versions, for Linux, macOS and Windows. Both install a program
+called `holdem`:
+- **`holdem`**, the game with sound. On Linux it needs the ALSA library (`libasound2`), which
+  every desktop has.
+- **`holdem-server`**, the same game without sound and without any audio libraries, for
+  dedicated servers. For Linux there are also static `musl` builds that run on any distribution.
+
+`holdem --version` shows which one you have: `holdem 0.6.0 (with sound)` or
+`holdem 0.6.0 (without sound)`.
+
+The installers put the program in `~/.cargo/bin`. The archives on the
+[releases page](https://github.com/earomc/holdem/releases) contain just the program, to run
+from anywhere.
+
+### With sound (`holdem`), for playing
+
+```
+# Linux and macOS
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/earomc/holdem/releases/latest/download/holdem-installer.sh | sh
+
+# Windows (PowerShell)
+powershell -ExecutionPolicy Bypass -c "irm https://github.com/earomc/holdem/releases/latest/download/holdem-installer.ps1 | iex"
+```
+
+### Without sound (`holdem-server`), for servers
+
+```
+# Linux and macOS
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/earomc/holdem/releases/latest/download/holdem-server-installer.sh | sh
+
+# Windows (PowerShell)
+powershell -ExecutionPolicy Bypass -c "irm https://github.com/earomc/holdem/releases/latest/download/holdem-server-installer.ps1 | iex"
+```
+
+On a server, start a table with `holdem serve` (see below).
+
+## Building
+
 ```
 cargo run --release                         # play
-cargo run --release -- server               # a table anyone can join, without playing yourself
+cargo run --release -- serve                # a table anyone can join, without playing yourself
 cargo run --release -- config write        # write holdem.toml with every setting explained
-cargo test                                  # rules, server, bots, interface and sound tests
+cargo test --workspace                      # rules, server, bots, interface and sound tests
 cargo test --release -- --ignored           # also check all 133,784,560 seven-card hands (slow)
-cargo build --release --no-default-features # a silent build without audio dependencies
+cargo build --release -p holdem-server      # holdem without sound and audio dependencies
 ```
 
 Requirements: Rust 1.88 or newer, and a terminal of at least 80×23 (80×28 with six or more
 players). On Linux the sound feature needs the ALSA development files:
 `sudo apt install libasound2-dev pkg-config` (Debian/Ubuntu) or
 `sudo dnf install alsa-lib-devel` (Fedora). macOS and Windows need nothing extra. Without them,
-build with `--no-default-features`.
+build `holdem-server` (or `holdem` with `--no-default-features`). Build it on its own with
+`-p holdem-server`: both packages make a program called `holdem`, so a `--workspace` build
+writes one over the other, and Cargo would also give `holdem-server` the sound feature.
+
+**Releasing.** Releases are built by [dist](https://axodotdev.github.io/cargo-dist/) (formerly cargo-dist)
+(`dist-workspace.toml`, `.github/workflows/release.yml`). Raise `version` in
+`[workspace.package]` of `Cargo.toml`, commit, and push a tag with that version:
+`git tag v0.6.1 && git push origin v0.6.1`. GitHub Actions then builds every archive and
+installer and publishes the release. `dist plan` shows what a release will contain.
 
 ## Ways to play
 
@@ -32,7 +80,7 @@ automatically on their join screen. The game starts when everyone in the lobby i
 bots take the free seats unless you switch that off. For players on the internet, forward TCP
 port 7777 (or the port in `holdem.toml`) to your computer in your router.
 
-**A server anyone can join.** `holdem server` runs a table with no player of its own (for
+**A server anyone can join.** `holdem serve` runs a table with no player of its own (for
 example on a computer that stays on), using the `[game]` and `[server]` settings
 of `holdem.toml`. `--port`, `--name` and `--speed` override single values, and on start-up it prints every
 setting it uses and the file they came from. After each game the table goes back
@@ -111,16 +159,16 @@ The file has three parts, by who reads them:
 | `[client.sound]` | | volume, the volume step, the pause between sounds |
 | `[client.setup]` | | the values offered on the setup screen (chips, blinds, blind levels, hand limits, rebuy periods) |
 | `[client.join]` | | connection timeout and how the join screen searches for tables |
-| `[game]` | any table this program runs: solo, hosted, or `holdem server` | seats, bots in free seats, whether the win-chance hint is allowed, the all-in run-out pace, which hands count for the style estimate |
+| `[game]` | any table this program runs: solo, hosted, or `holdem serve` | seats, bots in free seats, whether the win-chance hint is allowed, the all-in run-out pace, which hands count for the style estimate |
 | `[[game.speeds]]` | | the game speeds: as many as you like, each with a name and the milliseconds between bot moves |
 | `[game.bots]` | | bot names, and how hard bots think (simulated deals per decision) |
 | `[game.rules]` | | the rules, including the blind schedule, how fast blinds grow after it, the ante size, the straddle size and minimum players, and the rebuy stack |
 | `[game.fluctuation]` | | whether bots come and go, and how often |
-| `[server]` | network play only: hosting and `holdem server` | table name, port (also the port the join screen assumes), the speed of `holdem server`, time to act, pause between hands, how long a dropped player has |
+| `[server]` | network play only: hosting and `holdem serve` | table name, port (also the port the join screen assumes), the speed of `holdem serve`, time to act, pause between hands, how long a dropped player has |
 
 The `[game]` settings are not split into "client" and "server" parts, because the program
 that runs a table reads them: your own program in solo and hosted games, the server in
-`holdem server` games. Guests at someone else's table use that table's settings.
+`holdem serve` games. Guests at someone else's table use that table's settings.
 
 Not configurable: the internals of algorithms, such as how bots weigh their decisions, the
 hand evaluator, the measured style reference values and the sound synthesis. There, a number
@@ -134,7 +182,7 @@ A file from an older holdem is refused with a hint to write a fresh one.
 
 ```
 holdem [OPTIONS]                 play
-holdem server [OPTIONS]          run a table that anyone can join, without playing yourself
+holdem serve [OPTIONS]           run a table that anyone can join, without playing yourself
 holdem config write [FILE]       write a settings file with every setting explained
                                  (default: the --config file, or holdem.toml; --force replaces it)
 holdem config show               print the settings in effect and where they come from
@@ -142,14 +190,14 @@ holdem config check [FILE]       check a settings file (default: the one holdem 
 
   -c, --config <FILE>    settings file to use
       --seed <NUMBER>    fixed random seed: the same deals every game
-      --mute             do not open the audio device
-server:
+      --mute             do not open the audio device (not in the holdem-server build)
+serve:
   -p, --port <NUMBER>    instead of server.port
   -n, --name <TEXT>      instead of server.name
       --speed <NAME>     instead of server.speed
 ```
 
-On start-up, `holdem server` prints every setting it runs with: table, rules and network play.
+On start-up, `holdem serve` prints every setting it runs with: table, rules and network play.
 It also shows which settings file they came from (or that it uses the built-in defaults) and
 which values the command line changed.
 

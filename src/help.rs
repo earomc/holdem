@@ -334,9 +334,9 @@ pub fn pages(facts: &Facts) -> Vec<Page> {
                 )),
                 H("A SERVER ANYONE CAN JOIN"),
                 T(
-                    "Run \"holdem server\" on a computer that stays on: a table with no player of \
+                    "Run \"holdem serve\" on a computer that stays on: a table with no player of \
                its own, using the [game] and [server] settings of holdem.toml \
-               (\"holdem server --port 9000\" picks another port; it prints every setting it \
+               (\"holdem serve --port 9000\" picks another port; it prints every setting it \
                uses when it starts). After each game it goes \
                back to the lobby for the next one.",
                 ),

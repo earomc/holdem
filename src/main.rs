@@ -26,15 +26,34 @@ use holdem::table::TableSettings;
 use app::App;
 use sound::Sound;
 
+// Which build this is. Both releases install a program called `holdem`; the one
+// from the `holdem-server` package is built without the `sound` feature.
+#[cfg(feature = "sound")]
+const BUILD: &str = "with sound";
+#[cfg(feature = "sound")]
+const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), " (with sound)");
+#[cfg(feature = "sound")]
+const AFTER_HELP: &str = "Without a command, holdem starts the game. Press ? in the game for the \
+                          rules, the keys and a glossary of poker terms.\n\n\
+                          This build plays sound. The holdem-server release is the same \
+                          program without sound, for computers without audio libraries.";
+
+#[cfg(not(feature = "sound"))]
+const BUILD: &str = "without sound";
+#[cfg(not(feature = "sound"))]
+const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), " (without sound)");
+#[cfg(not(feature = "sound"))]
+const AFTER_HELP: &str = "Without a command, holdem starts the game. Press ? in the game for the \
+                          rules, the keys and a glossary of poker terms.\n\n\
+                          This build has no sound (the holdem-server release). The holdem \
+                          release is the same program with sound.";
+
 /// The command line, built with clap's builder API.
 fn cli() -> Command {
     Command::new("holdem")
-        .version(APP_VERSION)
+        .version(VERSION)
         .about("No-limit Texas Hold'em in the terminal: against bots, or with others over the network")
-        .after_help(
-            "Without a command, holdem starts the game. Press ? in the game for the rules, \
-             the keys and a glossary of poker terms.",
-        )
+        .after_help(AFTER_HELP)
         .arg(
             Arg::new("config")
                 .long("config")
@@ -52,14 +71,15 @@ fn cli() -> Command {
                 .global(true)
                 .help("Fixed random seed: the same deals every game"),
         )
-        .arg(
+        // Only the build with sound has --mute.
+        .args(cfg!(feature = "sound").then(|| {
             Arg::new("mute")
                 .long("mute")
                 .action(ArgAction::SetTrue)
-                .help("Do not open the audio device at all"),
-        )
+                .help("Do not open the audio device at all")
+        }))
         .subcommand(
-            Command::new("server")
+            Command::new("serve")
                 .about("Run a table that anyone can join, without playing yourself")
                 .after_help(
                     "The table uses the [game] and [server] sections of the settings file; \
@@ -162,7 +182,7 @@ impl Options {
     fn from_matches(m: &ArgMatches) -> Options {
         let file = |m: &ArgMatches| m.get_one::<PathBuf>("file").cloned();
         let action = match m.subcommand() {
-            Some(("server", s)) => Action::Server(ServerOptions {
+            Some(("serve", s)) => Action::Server(ServerOptions {
                 port: s.get_one::<u16>("port").copied(),
                 name: s.get_one::<String>("name").cloned(),
                 speed: s.get_one::<String>("speed").cloned(),
@@ -182,7 +202,8 @@ impl Options {
         Options {
             config: m.get_one::<PathBuf>("config").cloned(),
             seed: m.get_one::<u64>("seed").copied(),
-            mute: m.get_flag("mute"),
+            // clap panics on reading an argument it does not know.
+            mute: cfg!(feature = "sound") && m.get_flag("mute"),
             action,
         }
     }
@@ -334,8 +355,8 @@ fn server_report(
             (
                 "protocol",
                 format!(
-                    "holdem {}, protocol versions {} to {}",
-                    APP_VERSION, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION
+                    "holdem {} ({}), protocol versions {} to {}",
+                    APP_VERSION, BUILD, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION
                 ),
             ),
         ],
@@ -343,7 +364,7 @@ fn server_report(
     out
 }
 
-/// `holdem server`: a table with no player of its own, until Ctrl-C.
+/// `holdem serve`: a table with no player of its own, until Ctrl-C.
 fn run_server(
     config: &Config,
     source: Option<&Path>,
@@ -384,7 +405,7 @@ fn run_server(
     let server = Server::start(settings.clone(), Some(port), seed)
         .map_err(|e| format!("could not listen on port {}: {}", port, e))?;
     let port = server.port.unwrap_or(port);
-    println!("holdem {} server is running.\n", APP_VERSION);
+    println!("holdem {} ({}) server is running.\n", APP_VERSION, BUILD);
     print!(
         "{}",
         server_report(&settings, &speed.name, port, source, &overrides)
@@ -538,7 +559,7 @@ mod tests {
 
     #[test]
     fn command_lines() {
-        let o = parse(&["server", "--port", "9000", "-n", "Den", "--speed", "fast"]).unwrap();
+        let o = parse(&["serve", "--port", "9000", "-n", "Den", "--speed", "fast"]).unwrap();
         let Action::Server(s) = o.action else {
             panic!("not the server")
         };
@@ -546,10 +567,10 @@ mod tests {
         assert_eq!(s.name.as_deref(), Some("Den"));
         assert_eq!(s.speed.as_deref(), Some("fast"));
         // Global options work before and after the command.
-        let o = parse(&["--config", "a.toml", "server", "--seed", "4"]).unwrap();
+        let o = parse(&["--config", "a.toml", "serve", "--seed", "4"]).unwrap();
         assert_eq!(o.config, Some(PathBuf::from("a.toml")));
         assert_eq!(o.seed, Some(4));
-        let o = parse(&["server", "-c", "b.toml"]).unwrap();
+        let o = parse(&["serve", "-c", "b.toml"]).unwrap();
         assert_eq!(o.config, Some(PathBuf::from("b.toml")));
         let config = |o: Options| match o.action {
             Action::Config(c) => c,
@@ -581,10 +602,14 @@ mod tests {
             parse(&["--write-config"]).is_err(),
             "replaced by `config write`"
         );
-        assert!(parse(&["--mute"]).unwrap().mute);
+        if cfg!(feature = "sound") {
+            assert!(parse(&["--mute"]).unwrap().mute);
+        } else {
+            assert!(parse(&["--mute"]).is_err(), "no --mute without sound");
+        }
         assert_eq!(parse(&[]).unwrap(), Options::default());
         assert!(parse(&["--seed", "x"]).is_err());
-        assert!(parse(&["server", "--port", "70000"]).is_err());
+        assert!(parse(&["serve", "--port", "70000"]).is_err());
         assert!(parse(&["--bogus"]).is_err());
         assert!(parse(&["--config"]).is_err());
         assert!(
