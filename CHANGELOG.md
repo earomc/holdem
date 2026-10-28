@@ -15,6 +15,10 @@ All notable changes to holdem. The format follows
 ### Changed
 - The README is shorter; the details moved to `docs/` and `CONTRIBUTING.md`.
 
+### Fixed
+- The main menu shows the whole note about the settings file, wrapped over several lines,
+  instead of cutting it off.
+
 ## [0.6.0] - 2026-10-28
 
 ### Added

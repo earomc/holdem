@@ -395,7 +395,10 @@ fn draw_menu(frame: &mut Frame, app: &App, area: Rect) {
     }
     lines.push(Line::from(""));
     lines.push(Line::from(reminder(&[], Place::Menu)));
-    lines.push(Line::from(Span::styled(fit(&app.config_note, 56), dim())));
+    // Wrapped, not cut: the hint at the end and a long file path both matter.
+    for l in wrap_text(&app.config_note, 56, 0) {
+        lines.push(Line::from(Span::styled(l, dim())));
+    }
     let rect = centered(area, 60, lines.len() as u16 + 2);
     frame.render_widget(
         Paragraph::new(lines)
