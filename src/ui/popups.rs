@@ -11,14 +11,13 @@ use holdem::game::chips_text;
 use holdem::protocol::TableView;
 use holdem::stats;
 
+use super::log::log_view;
+use super::style::{centered, cyan, dim, key_for, reminder, reminder_spans, yellow};
+use super::text::{fit, text_width, wrap_text};
 use crate::app::{App, LeaveChoice, RaisePrompt, SettingsRow, pot_raise_to};
 use crate::help::{self, Item};
 use crate::keys::{self, Cmd, Place};
 use crate::session::Kind;
-use crate::ui::{
-    centered, cyan, dim, fit, key_for, log_view, reminder, reminder_spans, text_width, wrap_text,
-    yellow,
-};
 
 fn window(title: String, color: Color) -> Block<'static> {
     Block::bordered()
@@ -29,7 +28,7 @@ fn window(title: String, color: Color) -> Block<'static> {
 
 // ------------------------------------------------------------------ leave
 
-pub fn leave(frame: &mut Frame, app: &App, selected: usize, area: Rect) {
+pub(super) fn leave(frame: &mut Frame, app: &App, selected: usize, area: Rect) {
     let rect = centered(area, 60, 10);
     frame.render_widget(Clear, rect);
     let warning = match app.session.as_ref() {
@@ -64,7 +63,7 @@ pub fn leave(frame: &mut Frame, app: &App, selected: usize, area: Rect) {
 
 // ------------------------------------------------------------------ settings
 
-pub fn settings(frame: &mut Frame, app: &App, area: Rect) {
+pub(super) fn settings(frame: &mut Frame, app: &App, area: Rect) {
     let rect = centered(area, 58, 11);
     frame.render_widget(Clear, rect);
     let mut lines = vec![Line::from("")];
@@ -107,7 +106,7 @@ pub fn settings(frame: &mut Frame, app: &App, area: Rect) {
 
 // ------------------------------------------------------------------ log
 
-pub fn log(frame: &mut Frame, app: &App, area: Rect) {
+pub(super) fn log(frame: &mut Frame, app: &App, area: Rect) {
     let Some(session) = app.session.as_ref() else {
         return;
     };
@@ -141,7 +140,7 @@ fn bar(share: f32, width: usize) -> String {
     format!("{}{}", "█".repeat(filled), "░".repeat(width - filled))
 }
 
-pub fn profile(frame: &mut Frame, app: &App, area: Rect) {
+pub(super) fn profile(frame: &mut Frame, app: &App, area: Rect) {
     let rect = centered(area, 74, 20);
     frame.render_widget(Clear, rect);
     let inner_w = rect.width.saturating_sub(2) as usize;
@@ -219,7 +218,7 @@ pub fn profile(frame: &mut Frame, app: &App, area: Rect) {
 
 // ------------------------------------------------------------------ raise box
 
-pub fn raise(frame: &mut Frame, v: &TableView, prompt: &RaisePrompt, area: Rect) {
+pub(super) fn raise(frame: &mut Frame, v: &TableView, prompt: &RaisePrompt, area: Rect) {
     let Some(legal) = v.legal else {
         return;
     };
@@ -322,7 +321,7 @@ fn help_lines(items: &[Item], width: usize) -> Vec<Line<'static>> {
     out
 }
 
-pub fn help(frame: &mut Frame, app: &App, area: Rect) {
+pub(super) fn help(frame: &mut Frame, app: &App, area: Rect) {
     let width = area.width.min(84);
     let text_w = (width.saturating_sub(3) as usize).max(30);
     let pages = help::pages(&app.help_facts());

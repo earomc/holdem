@@ -3,7 +3,6 @@
 mod app;
 mod help;
 mod keys;
-mod popups;
 mod session;
 mod sound;
 mod ui;
