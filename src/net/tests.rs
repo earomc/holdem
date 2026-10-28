@@ -41,8 +41,18 @@ fn a_host_and_a_network_player_play_together() {
     hello(&host, "Host");
     let guest = connect("127.0.0.1", port, Duration::from_secs(5)).expect("connects");
     hello(&guest, "Guest");
-    // Both say they are ready; the game starts with one bot.
-    thread::sleep(Duration::from_millis(100));
+    // Once both are in the lobby, both say they are ready; the game starts
+    // with one bot. (Waiting a fixed time was not enough on slow machines.)
+    let deadline = Instant::now() + Duration::from_secs(20);
+    loop {
+        let left = deadline.saturating_duration_since(Instant::now());
+        assert!(!left.is_zero(), "the guest never reached the lobby");
+        if let Ok(ServerMsg::Lobby(l)) = guest.incoming.recv_timeout(left)
+            && l.players.len() == 2
+        {
+            break;
+        }
+    }
     host.send(ClientMsg::Ready);
     guest.send(ClientMsg::Ready);
     let v = wait_for(&guest, |v| v.hand_no >= 1);
