@@ -37,21 +37,29 @@ repository's release workflow and not changed since.
 
 ### With sound (`holdem`), for playing
 
-```
-# Linux and macOS
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/earomc/holdem/releases/latest/download/holdem-installer.sh | sh
+Linux and macOS:
 
-# Windows (PowerShell)
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/earomc/holdem/releases/latest/download/holdem-installer.sh | sh
+```
+
+Windows (PowerShell):
+
+```powershell
 powershell -ExecutionPolicy Bypass -c "irm https://github.com/earomc/holdem/releases/latest/download/holdem-installer.ps1 | iex"
 ```
 
 ### Without sound (`holdem-server`), for servers
 
-```
-# Linux and macOS
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/earomc/holdem/releases/latest/download/holdem-server-installer.sh | sh
+Linux and macOS:
 
-# Windows (PowerShell)
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/earomc/holdem/releases/latest/download/holdem-server-installer.sh | sh
+```
+
+Windows (PowerShell):
+
+```powershell
 powershell -ExecutionPolicy Bypass -c "irm https://github.com/earomc/holdem/releases/latest/download/holdem-server-installer.ps1 | iex"
 ```
 
