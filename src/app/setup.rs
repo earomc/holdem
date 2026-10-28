@@ -132,8 +132,8 @@ impl App {
             let f = &self.join.found[self.join.row - 2];
             match f.info.compatibility() {
                 Ok(_) => {
-                    let address = f.address.to_string();
-                    self.connect_to(address);
+                    let (address, table) = (f.address.to_string(), f.info.table.clone());
+                    self.connect_to(address, Some(table));
                 }
                 Err(m) => self.join.status = m.to_client_about_table(&f.info.table),
             }
@@ -144,7 +144,31 @@ impl App {
             self.join.row = 1;
         } else {
             let address = self.join.address.clone();
-            self.connect_to(address);
+            self.connect_to(address, None);
+        }
+    }
+
+    /// Keys on the screen that lists a server's tables.
+    pub(super) fn choose_key(&mut self, code: KeyCode) {
+        let Some(tables) = self.session.as_ref().and_then(|s| s.choices.clone()) else {
+            return;
+        };
+        let n = tables.len().max(1);
+        match keys::command(Place::Choose, code) {
+            Some(Cmd::Up) => self.choose_row = cycle(self.choose_row, n, -1),
+            Some(Cmd::Down) => self.choose_row = cycle(self.choose_row, n, 1),
+            Some(Cmd::Select) => {
+                if let (Some(t), Some(s)) = (tables.get(self.choose_row), self.session.as_mut()) {
+                    s.choose(&t.table);
+                }
+            }
+            Some(Cmd::Back) => {
+                // Hang up and go back to the addresses.
+                self.session = None;
+                self.screen = Screen::Join;
+            }
+            Some(cmd) => self.common(cmd),
+            None => {}
         }
     }
 }

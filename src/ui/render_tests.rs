@@ -300,3 +300,35 @@ fn a_hosted_game_renders_the_lobby_and_the_table() {
     press(&mut app, KeyCode::Enter);
     assert_eq!(app.screen, Screen::Menu);
 }
+
+#[test]
+fn the_choose_screen_renders_at_every_size() {
+    let table = |name: &str| holdem::table::TableSettings {
+        name: name.to_string(),
+        ..holdem::table::TableSettings::default()
+    };
+    let (server, _log) = holdem::net::Server::start_tables(
+        vec![table("Low stakes"), table("Turbo"), table("Heads-up")],
+        Some(0),
+        1,
+    )
+    .expect("starts");
+    let mut app = App::new(fast_config(), Some(1), Sound::new(true));
+    app.screen = Screen::Join;
+    app.join.name = "Ann".to_string();
+    app.join.address = format!("127.0.0.1:{}", server.port.unwrap());
+    app.join.row = 1;
+    press(&mut app, KeyCode::Enter);
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while app.screen != Screen::Choose {
+        assert!(Instant::now() < deadline, "no list of tables");
+        app.tick();
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    draw_everything(&mut app);
+    let text = screen_text(&app, 80, 23);
+    assert!(
+        text.contains("Turbo") && text.contains("Choose a table"),
+        "{text}"
+    );
+}

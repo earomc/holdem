@@ -91,6 +91,10 @@ fn is_table_array(v: &toml::Value) -> bool {
     matches!(v, toml::Value::Array(a) if !a.is_empty() && a.iter().all(toml::Value::is_table))
 }
 
+/// Lists of `[[tables]]` that may be empty. Empty, they are written as their
+/// explanation only: `tables = []` would clash with entries added below it.
+const TABLE_LISTS: &[&str] = &["server.tables"];
+
 fn render_table(out: &mut String, path: &str, table: &toml::Table, defaults: &toml::Table) {
     let join = |key: &str| {
         if path.is_empty() {
@@ -108,6 +112,13 @@ fn render_table(out: &mut String, path: &str, table: &toml::Table, defaults: &to
     // Plain settings first, then arrays of tables, then sub-tables (TOML needs that order).
     for (key, value) in table {
         if value.is_table() || is_table_array(value) {
+            continue;
+        }
+        if TABLE_LISTS.contains(&join(key).as_str()) && value.as_array().is_some_and(Vec::is_empty)
+        {
+            out.push('\n');
+            comment(out, doc(&join(key)));
+            raw_comment(out, "Default: none");
             continue;
         }
         out.push('\n');

@@ -2,7 +2,7 @@
 //! may be running ourselves), and everything the server has told us.
 
 use holdem::net::{Connection, Server};
-use holdem::protocol::{ClientMsg, LobbyView, ServerMsg, TableView};
+use holdem::protocol::{Announcement, ClientMsg, LobbyView, ServerMsg, TableView};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Kind {
@@ -34,6 +34,8 @@ pub struct Session {
     pub closed: Option<String>,
     /// The table's program version (empty for tables older than holdem 0.4).
     pub server_app: String,
+    /// The server's tables, while it waits for us to choose one.
+    pub choices: Option<Vec<Announcement>>,
     paused: bool,
 }
 
@@ -51,9 +53,10 @@ impl Session {
         conn: Connection,
         server: Option<Server>,
         name: &str,
+        table: Option<&str>,
         log_keep: usize,
     ) -> Session {
-        conn.send(ClientMsg::hello(name));
+        conn.send(ClientMsg::hello(name, table));
         let share =
             server
                 .as_ref()
@@ -75,6 +78,7 @@ impl Session {
             share,
             closed: None,
             server_app: String::new(),
+            choices: None,
             paused: false,
         }
     }
@@ -95,7 +99,9 @@ impl Session {
                     self.name = name;
                     self.table = table;
                     self.server_app = app;
+                    self.choices = None;
                 }
+                ServerMsg::Tables(tables) => self.choices = Some(tables),
                 ServerMsg::Lobby(lobby) => {
                     self.lobby = Some(lobby);
                     self.view = None;
@@ -119,6 +125,11 @@ impl Session {
             }
         }
         update
+    }
+
+    /// Joins the table called `name`, from the server's list.
+    pub fn choose(&mut self, name: &str) {
+        self.send(ClientMsg::ChooseTable(name.to_string()));
     }
 
     /// Pauses a solo game while a window is open.

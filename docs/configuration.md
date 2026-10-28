@@ -53,6 +53,7 @@ The file has three parts, by who reads them:
 | `[game.rules]` | | the rules, including the blind schedule, how fast blinds grow after it, the ante size, the straddle size and minimum players, and the rebuy stack |
 | `[game.fluctuation]` | | whether bots come and go, and how often |
 | `[server]` | network play only: hosting and `holdem serve` | table name, port (also the port the join screen assumes), the speed of `holdem serve`, time to act, pause between hands, how long a dropped player has |
+| `[[server.tables]]` | | several tables for `holdem serve`, each with a name and its own seats, speed, starting chips, small blind or free seats (see [Running a server](server.md#several-tables)) |
 
 The `[game]` settings are not split into "client" and "server" parts, because the program
 that runs a table reads them: your own program in solo and hosted games, the server in

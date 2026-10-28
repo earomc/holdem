@@ -28,7 +28,7 @@ impl Peer {
 fn join(t: &mut Table, id: ClientId, name: &str, owner: bool, now: Instant) -> Peer {
     let (tx, rx) = channel();
     t.connect(id, tx, owner);
-    t.handle(id, ClientMsg::hello(name), now);
+    t.handle(id, ClientMsg::hello(name, None), now);
     Peer { id, rx, view: None }
 }
 
@@ -298,6 +298,7 @@ fn wrong_versions_are_turned_away_with_a_reason() {
         version,
         min_version,
         app: "test".into(),
+        table: None,
     };
     // A client from before protocol 3 (holdem 0.3).
     let (tx, rx) = channel();

@@ -27,7 +27,8 @@ impl Table {
         let seat = client.seat;
         let owner = client.owner;
         match msg {
-            ClientMsg::Hello { .. } => {}
+            // Choosing a table is the server's business, before a table sees the client.
+            ClientMsg::Hello { .. } | ClientMsg::ChooseTable(_) => {}
             ClientMsg::Act { action, turn } => self.act(id, seat, action, turn),
             ClientMsg::Ready => self.ready(id, seat, now),
             ClientMsg::Rebuy(yes) => {

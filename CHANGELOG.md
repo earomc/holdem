@@ -6,6 +6,16 @@ All notable changes to holdem. The format follows
 
 ## [Unreleased]
 
+### Added
+- One server, several tables: `holdem serve` runs every `[[server.tables]]` entry of
+  `holdem.toml` on the one port, each with its own name and, if you like, seats, speed,
+  starting chips, small blind and free seats. Players see each table on their join screen, or
+  choose from the server's list after typing its address. The log names the table.
+
+### Changed
+- Network protocol 4 (holdem still speaks 3): players with holdem 0.7 or older can still join a
+  server with several tables, and are seated at its first table.
+
 ## [0.7.0] - 2026-10-28
 
 ### Added

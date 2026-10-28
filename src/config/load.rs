@@ -172,6 +172,38 @@ impl Config {
             ));
         }
         let f = &g.fluctuation;
+        let mut tables: Vec<&str> = Vec::new();
+        for t in &self.server.tables {
+            let name = t.name.trim();
+            if name.is_empty() {
+                return Err("every [[server.tables]] entry needs a name".to_string());
+            }
+            if tables.contains(&name) {
+                return Err(format!(
+                    "the table name \"{name}\" is used twice in [[server.tables]]"
+                ));
+            }
+            tables.push(name);
+            if let Some(speed) = &t.speed
+                && self.speed_index(speed).is_none()
+            {
+                return Err(format!(
+                    "the table \"{name}\" has the speed \"{speed}\", which is not in [[game.speeds]]"
+                ));
+            }
+            if t.seats
+                .is_some_and(|s| !(MIN_PLAYERS..=MAX_PLAYERS).contains(&s))
+            {
+                return Err(format!(
+                    "the table \"{name}\" must have {MIN_PLAYERS} to {MAX_PLAYERS} seats"
+                ));
+            }
+            if t.starting_chips == Some(0) || t.small_blind == Some(0) {
+                return Err(format!(
+                    "the table \"{name}\": starting_chips and small_blind must be above 0"
+                ));
+            }
+        }
         if !(0.0..=1.0).contains(&f.leave_chance) || !(0.0..=1.0).contains(&f.join_chance) {
             return Err("game.fluctuation chances must be between 0 and 1".to_string());
         }

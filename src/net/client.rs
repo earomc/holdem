@@ -122,7 +122,9 @@ pub fn discover(port: u16, wait: Duration) -> Vec<Found> {
             let duplicate = found.iter().any(|f: &Found| {
                 f.info == info && (f.address.ip().is_loopback() || from.ip().is_loopback())
             });
-            if !duplicate && !found.iter().any(|f| f.address == address) {
+            // A server with several tables answers once per table.
+            let same = |f: &Found| f.address == address && f.info.table == info.table;
+            if !duplicate && !found.iter().any(same) {
                 found.push(Found { address, info });
             }
         }

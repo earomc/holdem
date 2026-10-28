@@ -38,6 +38,33 @@ holdem config write ~/holdem.toml    # every setting, explained
 holdem serve --config ~/holdem.toml
 ```
 
+## Several tables
+
+One `holdem serve` can run several tables on the one port. List them in `holdem.toml`, one
+`[[server.tables]]` entry per table. Each needs a name (different for every table) and may set
+its own `seats`, `speed`, `starting_chips`, `small_blind` and `fill_with_bots`; everything else
+comes from `[game]` and `[server]`:
+
+```toml
+[[server.tables]]
+name = "Low stakes"
+small_blind = 5
+
+[[server.tables]]
+name = "Turbo"
+speed = "Fast"
+seats = 6
+
+[[server.tables]]
+name = "Heads-up"
+seats = 2
+```
+
+Players on your network see every table on their join screen. Someone who types the server's
+address gets the list of tables and picks one. Players with holdem 0.7 or older cannot choose:
+they are seated at the first table. On start-up, `holdem serve` lists the tables, and each line
+of its log names the table.
+
 ## Network
 
 - Players connect over **TCP** to the port (7777 by default, `server.port`).

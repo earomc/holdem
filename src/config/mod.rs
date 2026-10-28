@@ -188,6 +188,29 @@ pub struct ServerConfig {
     pub next_hand_seconds: u32,
     /// Seconds before a disconnected player's turn is folded for them.
     pub away_seconds: u32,
+    /// Several tables for `holdem serve`, all on `port`. Empty: one table
+    /// called `name`.
+    pub tables: Vec<TableConfig>,
+}
+
+/// One of the tables of `holdem serve` (`[[server.tables]]`). What is left
+/// out comes from `[game]` and `[server]`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TableConfig {
+    /// The table's name, shown to players; it also tells the tables apart.
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub seats: Option<usize>,
+    /// One of `[[game.speeds]]`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speed: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill_with_bots: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub starting_chips: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub small_blind: Option<u32>,
 }
 
 // ------------------------------------------------------------------ defaults
@@ -303,6 +326,7 @@ impl Default for ServerConfig {
             turn_seconds: 30,
             next_hand_seconds: 8,
             away_seconds: 1,
+            tables: Vec::new(),
         }
     }
 }
@@ -371,9 +395,33 @@ impl Config {
         &self.game.speeds[self.speed_index(name).unwrap_or(0)]
     }
 
-    /// Table settings for `holdem serve`.
-    pub fn server_table(&self) -> TableSettings {
-        self.table_settings(&self.server.name, self.speed(&self.server.speed).ms, true)
+    /// The tables of `holdem serve`: one per `[[server.tables]]` entry, or one
+    /// called `server.name` when there are none.
+    pub fn server_tables(&self) -> Vec<TableSettings> {
+        let table = |name: &str, speed: &str| self.table_settings(name, self.speed(speed).ms, true);
+        if self.server.tables.is_empty() {
+            return vec![table(&self.server.name, &self.server.speed)];
+        }
+        self.server
+            .tables
+            .iter()
+            .map(|t| {
+                let mut s = table(&t.name, t.speed.as_deref().unwrap_or(&self.server.speed));
+                if let Some(seats) = t.seats {
+                    s.seats = seats;
+                }
+                if let Some(bots) = t.fill_with_bots {
+                    s.fill_with_bots = bots;
+                }
+                if let Some(chips) = t.starting_chips {
+                    s.rules.starting_chips = chips;
+                }
+                if let Some(blind) = t.small_blind {
+                    s.rules.small_blind = blind;
+                }
+                s
+            })
+            .collect()
     }
 }
 
@@ -488,7 +536,7 @@ mod tests {
         assert_eq!(c.game.speeds.len(), 1);
         assert_eq!(c.speed_index("TURBO"), Some(0));
         assert_eq!(c.game.rules, Rules::default());
-        assert_eq!(c.server_table().speed_ms, 50);
+        assert_eq!(c.server_tables()[0].speed_ms, 50);
     }
 
     #[test]
@@ -524,6 +572,47 @@ mod tests {
     }
 
     #[test]
+    fn several_server_tables() {
+        let c = Config::default();
+        let one = c.server_tables();
+        assert_eq!(one.len(), 1, "without entries, one table");
+        assert_eq!(one[0].name, "Hold'em table");
+
+        let c = Config::parse(
+            r#"
+[[server.tables]]
+name = "Low"
+small_blind = 5
+
+[[server.tables]]
+name = "Turbo"
+speed = "Fast"
+seats = 4
+"#,
+        )
+        .unwrap();
+        let tables = c.server_tables();
+        assert_eq!(tables.len(), 2);
+        assert_eq!(tables[0].name, "Low");
+        assert_eq!(tables[0].rules.small_blind, 5);
+        assert_eq!(tables[0].seats, c.game.seats, "the rest comes from [game]");
+        assert_eq!(tables[1].seats, 4);
+        assert_eq!(tables[1].speed_ms, c.speed("Fast").ms);
+
+        let table = |extra: &str| format!("[[server.tables]]\nname = \"A\"\n{extra}");
+        for bad in [
+            format!("{}\n{}", table(""), table("")),
+            "[[server.tables]]\nname = \" \"\n".to_string(),
+            table("speed = \"Warp\"\n"),
+            table("seats = 12\n"),
+            table("small_blind = 0\n"),
+            table("antes = true\n"),
+        ] {
+            assert!(Config::parse(&bad).is_err(), "accepted: {bad}");
+        }
+    }
+
+    #[test]
     fn the_player_name_has_a_sensible_fallback() {
         let named = ClientConfig {
             name: "  Mo  ".to_string(),
@@ -546,7 +635,7 @@ mod tests {
         c.game.bots.thinking_samples = 99;
         c.game.style_min_stack_bb = 20;
         c.server.speed = "Fast".to_string();
-        let s = c.server_table();
+        let s = c.server_tables().remove(0);
         assert!(!s.allow_win_chance);
         assert_eq!(s.bot_samples, 99);
         assert_eq!(s.stats_min_stack_bb, 20);

@@ -1,4 +1,5 @@
-//! `holdem serve`: a table with no player of its own, and what it prints.
+//! `holdem serve`: tables with no player of their own, all on one port, and
+//! what it prints.
 
 use std::path::Path;
 use std::sync::mpsc::RecvTimeoutError;
@@ -17,14 +18,23 @@ fn on_off(value: bool, on: &str, off: &str) -> String {
     if value { on } else { off }.to_string()
 }
 
-/// Everything a dedicated server runs with, as labelled lines.
+/// One table of the server, with the name of its speed.
+struct ServedTable {
+    settings: TableSettings,
+    speed: String,
+}
+
+/// Everything a dedicated server runs with, as labelled lines. With several
+/// tables, what differs between them is listed per table and the rest once.
 fn server_report(
-    settings: &TableSettings,
-    speed_name: &str,
+    tables: &[ServedTable],
     port: u16,
     source: Option<&Path>,
     overrides: &[String],
 ) -> String {
+    let several = tables.len() > 1;
+    let settings = &tables[0].settings;
+    let speed_name = &tables[0].speed;
     let r = &settings.rules;
     let mut out = String::new();
     let mut section = |title: &str, rows: Vec<(&str, String)>| {
@@ -53,73 +63,99 @@ fn server_report(
         ),
         None => "off".to_string(),
     };
-    section(
-        "Table",
-        vec![
-            ("name", format!("\"{}\"", settings.name)),
-            ("port", format!("{port} (on this network: {lan})")),
-            ("seats", settings.seats.to_string()),
-            (
-                "free seats",
-                on_off(
-                    settings.fill_with_bots,
-                    "filled with bots",
-                    "left empty (people only)",
-                ),
+    let free_seats = |s: &TableSettings| {
+        on_off(
+            s.fill_with_bots,
+            "filled with bots",
+            "left empty (people only)",
+        )
+    };
+    if several {
+        let rows = tables
+            .iter()
+            .map(|t| {
+                let s = &t.settings;
+                (
+                    s.name.as_str(),
+                    format!(
+                        "{} seats, {}, {} chips, blinds {}, free seats {}",
+                        s.seats,
+                        t.speed,
+                        chips_text(s.rules.starting_chips),
+                        s.rules.blinds_text(),
+                        free_seats(s)
+                    ),
+                )
+            })
+            .collect();
+        section("Tables", rows);
+    }
+    // With several tables, the rows that may differ are listed above instead.
+    let per_table = ["name", "seats", "free seats", "speed", "starting chips"];
+    let mut table_rows = vec![
+        ("name", format!("\"{}\"", settings.name)),
+        ("port", format!("{port} (on this network: {lan})")),
+        ("seats", settings.seats.to_string()),
+        ("free seats", free_seats(settings)),
+        ("bot names", settings.bot_names.join(", ")),
+        (
+            "bot thinking",
+            format!("{} simulated deals per decision", settings.bot_samples),
+        ),
+        (
+            "speed",
+            format!("{} ({} ms per bot move)", speed_name, settings.speed_ms),
+        ),
+        (
+            "all-in run-out pace",
+            format!("{}% of the speed", settings.runout_pace_percent),
+        ),
+        ("players come and go", fluctuation),
+        (
+            "win-chance hint",
+            on_off(settings.allow_win_chance, "allowed", "not allowed"),
+        ),
+        (
+            "style estimate",
+            format!(
+                "counts hands started with at least {} big blinds",
+                settings.stats_min_stack_bb
             ),
-            ("bot names", settings.bot_names.join(", ")),
-            (
-                "bot thinking",
-                format!("{} simulated deals per decision", settings.bot_samples),
-            ),
-            (
-                "speed",
-                format!("{} ({} ms per bot move)", speed_name, settings.speed_ms),
-            ),
-            (
-                "all-in run-out pace",
-                format!("{}% of the speed", settings.runout_pace_percent),
-            ),
-            ("players come and go", fluctuation),
-            (
-                "win-chance hint",
-                on_off(settings.allow_win_chance, "allowed", "not allowed"),
-            ),
-            (
-                "style estimate",
-                format!(
-                    "counts hands started with at least {} big blinds",
-                    settings.stats_min_stack_bb
-                ),
-            ),
-        ],
-    );
+        ),
+    ];
+    if several {
+        table_rows.retain(|(label, _)| !per_table.contains(label));
+    }
+    section(if several { "Every table" } else { "Table" }, table_rows);
 
     let schedule: Vec<String> = r.blind_schedule.iter().map(|p| format!("{p}%")).collect();
-    section(
-        "Rules",
-        vec![
-            ("starting chips", chips_text(r.starting_chips)),
-            (
-                "blinds",
-                format!("{}, up {}", r.blinds_text(), r.levels_text()),
+    let blinds = if several {
+        format!("as listed for each table, up {}", r.levels_text())
+    } else {
+        format!("{}, up {}", r.blinds_text(), r.levels_text())
+    };
+    let mut rules = vec![
+        ("starting chips", chips_text(r.starting_chips)),
+        ("blinds", blinds),
+        (
+            "blind schedule",
+            format!(
+                "{}, then +{}% per level",
+                schedule.join(" "),
+                r.blind_growth_percent.saturating_sub(100)
             ),
-            (
-                "blind schedule",
-                format!(
-                    "{}, then +{}% per level",
-                    schedule.join(" "),
-                    r.blind_growth_percent.saturating_sub(100)
-                ),
-            ),
-            ("hand limit", r.hand_limit_text()),
-            ("antes", r.antes_text()),
-            ("straddle", r.straddle_text()),
-            ("rebuys", r.rebuys_text()),
-            ("button rule", r.button_text().to_string()),
-            ("showdown", r.showdown_text().to_string()),
-        ],
-    );
+        ),
+        ("hand limit", r.hand_limit_text()),
+        ("antes", r.antes_text()),
+        ("straddle", r.straddle_text()),
+        ("rebuys", r.rebuys_text()),
+        ("button rule", r.button_text().to_string()),
+        ("showdown", r.showdown_text().to_string()),
+    ];
+    if several {
+        rules.retain(|(label, _)| !per_table.contains(label));
+    }
+    section("Rules", rules);
 
     let seconds = |s: u32, none: &str| {
         if s == 0 {
@@ -151,7 +187,7 @@ fn server_report(
     out
 }
 
-/// `holdem serve`: a table with no player of its own, until Ctrl-C.
+/// `holdem serve`: the tables, with no player of their own, until Ctrl-C.
 pub(crate) fn run_server(
     config: &Config,
     source: Option<&Path>,
@@ -159,10 +195,34 @@ pub(crate) fn run_server(
     seed: Option<u64>,
 ) -> Result<(), String> {
     let mut overrides = Vec::new();
-    let mut settings = config.server_table();
-    let mut speed = config.speed(&config.server.speed);
+    let speeds: Vec<String> = if config.server.tables.is_empty() {
+        vec![config.server.speed.clone()]
+    } else {
+        let default = &config.server.speed;
+        config
+            .server
+            .tables
+            .iter()
+            .map(|t| t.speed.clone().unwrap_or_else(|| default.clone()))
+            .collect()
+    };
+    let mut tables: Vec<ServedTable> = config
+        .server_tables()
+        .into_iter()
+        .zip(speeds)
+        .map(|(settings, speed)| ServedTable {
+            settings,
+            speed: config.speed(&speed).name.clone(),
+        })
+        .collect();
     if let Some(name) = &options.name {
-        settings.name = name.clone();
+        if !config.server.tables.is_empty() {
+            return Err(
+                "--name names the one table; with [[server.tables]] the names are in the settings file"
+                    .to_string(),
+            );
+        }
+        tables[0].settings.name = name.clone();
         overrides.push(format!("--name \"{name}\""));
     }
     if let Some(wanted) = &options.speed {
@@ -174,8 +234,11 @@ pub(crate) fn run_server(
                 names.join(", ")
             ));
         };
-        speed = &config.game.speeds[i];
-        settings.speed_ms = speed.ms;
+        let speed = &config.game.speeds[i];
+        for t in &mut tables {
+            t.settings.speed_ms = speed.ms;
+            t.speed = speed.name.clone();
+        }
         overrides.push(format!("--speed {}", speed.name));
     }
     let port = match options.port {
@@ -189,21 +252,27 @@ pub(crate) fn run_server(
         overrides.push(format!("--seed {s}"));
     }
     let seed = seed.unwrap_or_else(|| holdem::card::Rng::from_entropy().next_u64());
-    let (server, events) = Server::start_logged(settings.clone(), Some(port), seed)
+    let settings = tables.iter().map(|t| t.settings.clone()).collect();
+    let (server, events) = Server::start_tables(settings, Some(port), seed)
         .map_err(|e| format!("could not listen on port {port}: {e}"))?;
     let port = server.port.unwrap_or(port);
     println!("holdem {APP_VERSION} ({BUILD}) server is running.\n");
-    print!(
-        "{}",
-        server_report(&settings, &speed.name, port, source, &overrides)
-    );
+    print!("{}", server_report(&tables, port, source, &overrides));
     println!(
         "\nFor players on the internet, forward TCP port {port} to this computer. Press Ctrl-C to stop.\n"
     );
-    // One line per event, with the time (UTC), until the table stops.
+    // One line per event, with the time (UTC) and, with several tables, the table.
+    let several = tables.len() > 1;
     while server.is_running() {
         match events.recv_timeout(Duration::from_secs(1)) {
-            Ok(event) => println!("{}  {event}", clock(SystemTime::now())),
+            Ok((table, event)) => {
+                let at = clock(SystemTime::now());
+                if several {
+                    println!("{at}  {table}: {event}");
+                } else {
+                    println!("{at}  {event}");
+                }
+            }
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => break,
         }
@@ -251,10 +320,12 @@ mod tests {
         c.game.rules.antes = true;
         c.game.rules.rebuy_levels = 2;
         c.game.fluctuation.enabled = true;
-        let s = c.server_table();
+        let s = [ServedTable {
+            settings: c.server_tables().remove(0),
+            speed: "Normal".to_string(),
+        }];
         let text = server_report(
             &s,
-            "Normal",
             7777,
             Some(Path::new("/srv/holdem.toml")),
             &["--port 7777".to_string()],
@@ -280,8 +351,37 @@ mod tests {
         ] {
             assert!(text.contains(expected), "missing {expected:?} in:\n{text}");
         }
-        let defaults = server_report(&s, "Normal", 7777, None, &[]);
+        let defaults = server_report(&s, 7777, None, &[]);
         assert!(defaults.contains("built-in defaults"));
         assert!(!defaults.contains("command line"));
+    }
+
+    #[test]
+    fn with_several_tables_the_report_lists_each_and_the_rest_once() {
+        let c = Config::default();
+        let table = |name: &str, blind: u32, speed: &str| {
+            let mut settings = c.server_tables().remove(0);
+            settings.name = name.to_string();
+            settings.rules.small_blind = blind;
+            ServedTable {
+                settings,
+                speed: speed.to_string(),
+            }
+        };
+        let tables = [table("Low", 5, "Normal"), table("Turbo", 10, "Fast")];
+        let text = server_report(&tables, 7777, None, &[]);
+        for expected in [
+            "Tables",
+            "Low                   6 seats, Normal, 1,500 chips, blinds 5/10",
+            "Turbo                 6 seats, Fast, 1,500 chips, blinds 10/20",
+            "Every table",
+            "as listed for each table",
+        ] {
+            assert!(text.contains(expected), "missing {expected:?} in:\n{text}");
+        }
+        assert!(
+            !text.contains("  name "),
+            "the names are in the list:\n{text}"
+        );
     }
 }

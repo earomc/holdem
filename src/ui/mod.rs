@@ -14,6 +14,7 @@ use self::text::fit;
 use crate::app::{App, Screen};
 
 mod cards;
+mod choose;
 mod join;
 mod lobby;
 mod log;
@@ -36,6 +37,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
         Screen::Menu => menu::draw(frame, app, area),
         Screen::Setup => setup::draw(frame, app, area),
         Screen::Join => join::draw(frame, app, area),
+        Screen::Choose => choose::draw(frame, app, area),
         Screen::Lobby => lobby::draw(frame, app, area),
         Screen::Table => table::draw(frame, app, area),
         Screen::Over => over::draw(frame, app, area),

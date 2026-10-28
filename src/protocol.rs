@@ -28,8 +28,10 @@ use crate::card::Card;
 use crate::game::{Action, GameEvent, Legal, Rules, Standing, State, Street};
 use crate::stats::Stats;
 
-/// The newest protocol version this program speaks.
-pub const PROTOCOL_VERSION: u32 = 3;
+/// The newest protocol version this program speaks. Version 4 added several
+/// tables per server: `Hello` may name a table, and a server with several
+/// answers a `Hello` that names none with [`ServerMsg::Tables`].
+pub const PROTOCOL_VERSION: u32 = 4;
 /// The oldest protocol version this program still speaks.
 pub const MIN_PROTOCOL_VERSION: u32 = 3;
 /// This program's version, shown when versions do not match.
@@ -52,7 +54,12 @@ pub enum ClientMsg {
         /// The client program's version, for messages.
         #[serde(default)]
         app: String,
+        /// The table to join, by name, at a server with several (protocol 4).
+        #[serde(default)]
+        table: Option<String>,
     },
+    /// The table to join, chosen from [`ServerMsg::Tables`] (protocol 4).
+    ChooseTable(String),
     /// A decision for the turn identified by `turn` (from [`TableView::turn`]).
     /// Answers to an earlier turn are ignored.
     Act { action: Action, turn: u64 },
@@ -68,13 +75,15 @@ pub enum ClientMsg {
 }
 
 impl ClientMsg {
-    /// The `Hello` this program sends.
-    pub fn hello(name: &str) -> ClientMsg {
+    /// The `Hello` this program sends, for the table called `table` if the
+    /// server has several.
+    pub fn hello(name: &str, table: Option<&str>) -> ClientMsg {
         ClientMsg::Hello {
             name: name.to_string(),
             version: PROTOCOL_VERSION,
             min_version: Some(MIN_PROTOCOL_VERSION),
             app: APP_VERSION.to_string(),
+            table: table.map(str::to_string),
         }
     }
 }
@@ -93,6 +102,10 @@ pub enum ServerMsg {
         #[serde(default)]
         app: String,
     },
+    /// The server's tables, to choose one with [`ClientMsg::ChooseTable`]. Sent
+    /// instead of `Welcome` when the server has several and `Hello` named none
+    /// of them (protocol 4).
+    Tables(Vec<Announcement>),
     Lobby(LobbyView),
     Table(Box<TableView>),
     /// A short message to show (an illegal action, a refused request...).
@@ -347,6 +360,7 @@ mod tests {
                 version: PROTOCOL_VERSION,
                 min_version: Some(MIN_PROTOCOL_VERSION),
                 app: APP_VERSION.into(),
+                table: None,
             },
             ClientMsg::Act {
                 action: Action::RaiseTo(120),
@@ -354,12 +368,28 @@ mod tests {
             },
             ClientMsg::Ready,
             ClientMsg::Rebuy(true),
+            ClientMsg::ChooseTable("Turbo".into()),
         ];
         for m in msgs {
             let line = serde_json::to_string(&m).unwrap();
             assert!(!line.contains('\n'));
             assert_eq!(serde_json::from_str::<ClientMsg>(&line).unwrap(), m);
         }
+    }
+
+    #[test]
+    fn the_list_of_tables_round_trips() {
+        let list = ServerMsg::Tables(vec![Announcement {
+            table: "Turbo".into(),
+            port: 7777,
+            players: 2,
+            seats: 6,
+            playing: true,
+            version: PROTOCOL_VERSION,
+            min_version: Some(MIN_PROTOCOL_VERSION),
+        }]);
+        let line = serde_json::to_string(&list).unwrap();
+        assert_eq!(serde_json::from_str::<ServerMsg>(&line).unwrap(), list);
     }
 
     #[test]

@@ -190,3 +190,50 @@ fn the_hint_cannot_be_turned_on_where_it_is_not_allowed() {
             .is_some_and(|t| t.contains("does not allow"))
     );
 }
+
+#[test]
+fn a_server_with_several_tables_asks_which_one() {
+    let table = |name: &str| holdem::table::TableSettings {
+        name: name.to_string(),
+        ..holdem::table::TableSettings::default()
+    };
+    let (server, _log) =
+        holdem::net::Server::start_tables(vec![table("Low"), table("High")], Some(0), 1)
+            .expect("starts");
+    let mut app = App::new(Config::default(), Some(1), Sound::new(true));
+    let press = |app: &mut App, code| app.on_key(KeyEvent::new(code, KeyModifiers::NONE));
+    app.screen = Screen::Join;
+    app.join.name = "Ann".to_string();
+    app.join.address = format!("127.0.0.1:{}", server.port.unwrap());
+    app.join.row = 1;
+    press(&mut app, KeyCode::Enter);
+
+    let wait = |app: &mut App, screen: Screen| {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        while app.screen != screen {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "never reached {screen:?}"
+            );
+            app.tick();
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    };
+    wait(&mut app, Screen::Choose);
+    let names: Vec<String> = app
+        .session
+        .as_ref()
+        .unwrap()
+        .choices
+        .as_ref()
+        .unwrap()
+        .iter()
+        .map(|t| t.table.clone())
+        .collect();
+    assert_eq!(names, ["Low", "High"]);
+
+    press(&mut app, KeyCode::Down);
+    press(&mut app, KeyCode::Enter);
+    wait(&mut app, Screen::Lobby);
+    assert_eq!(app.session.as_ref().unwrap().table, "High");
+}

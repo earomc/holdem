@@ -113,5 +113,8 @@ agree on the newest version both speak. If there is none, you are told in plain 
 you or the host needs to update, instead of the game failing in odd ways. The join screen marks
 tables found on your network that need another version. Within a protocol version, messages
 tolerate missing and extra fields, and a message of an unknown kind is skipped or answered with
-a notice rather than ending the connection. Versions 0.4 to 0.7 speak protocol 3; holdem 0.3 spoke
-protocol 2 and is told to update.
+a notice rather than ending the connection. Versions 0.4 to 0.7 speak protocol 3; from 0.8 on,
+holdem speaks protocols 3 and 4. Protocol 4 added several tables per server: `Hello` may name
+a table, and a server with several answers one that names none with the list of tables.
+Programs speaking protocol 3 are seated at the server's first table. holdem 0.3 spoke protocol
+2 and is told to update.

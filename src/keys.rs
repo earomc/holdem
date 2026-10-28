@@ -10,6 +10,8 @@ pub enum Place {
     Menu,
     Setup,
     Join,
+    /// Choosing one of the tables at a server with several.
+    Choose,
     Lobby,
     /// At the table, when it is your turn.
     Turn,
@@ -203,6 +205,24 @@ pub const SECTIONS: &[Section] = &[
                 "open this help (? and H are letters you can type here)",
                 "help",
             ),
+        ],
+    },
+    Section {
+        place: Place::Choose,
+        title: "CHOOSING A TABLE",
+        rows: &[
+            row(UP_DOWN, "move between the server's tables", "choose"),
+            row(
+                &[(&[Enter], Cmd::Select)],
+                "join the highlighted table",
+                "join",
+            ),
+            row(
+                &[(&[Esc, Char('q')], Cmd::Back)],
+                "hang up and go back to the join screen",
+                "back",
+            ),
+            OPEN_HELP,
         ],
     },
     Section {
@@ -547,6 +567,7 @@ mod tests {
         &[Place::Menu],
         &[Place::Setup],
         &[Place::Join],
+        &[Place::Choose],
         &[Place::Lobby],
         &[Place::Table, Place::Turn],
         &[Place::Table, Place::HandOver],

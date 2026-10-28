@@ -35,6 +35,7 @@ impl App {
                 Screen::Menu => self.menu_key(code),
                 Screen::Setup => self.setup_key(code),
                 Screen::Join => self.join_key(code),
+                Screen::Choose => self.choose_key(code),
                 Screen::Lobby => self.lobby_key(code),
                 Screen::Table => self.table_key(code),
                 Screen::Over => self.over_key(code),

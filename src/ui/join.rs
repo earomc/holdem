@@ -11,6 +11,7 @@ use super::text::{fit, wrap_text};
 use super::title_block;
 use crate::app::App;
 use crate::keys::{Cmd, Place};
+use holdem::protocol::Announcement;
 
 fn input_line(label: &str, value: &str, active: bool) -> Line<'static> {
     let cursor = if active { "▏" } else { "" };
@@ -19,6 +20,34 @@ fn input_line(label: &str, value: &str, active: bool) -> Line<'static> {
         Span::raw(format!(" {} {:<10}", if active { "▶" } else { " " }, label)),
         Span::styled(format!("{value}{cursor}"), style),
     ])
+}
+
+/// One table in a list: its name (padded to `name_width`), where it is, how
+/// full, and whether it plays.
+pub(super) fn table_line(
+    info: &Announcement,
+    address: Option<&str>,
+    active: bool,
+    name_width: usize,
+    width: usize,
+) -> Line<'static> {
+    let state = match info.compatibility() {
+        Err(m) => m.about_table(),
+        Ok(_) if info.playing => "playing".to_string(),
+        Ok(_) => "waiting".to_string(),
+    };
+    let place = address.map(|a| format!("  {a}")).unwrap_or_default();
+    let text = format!(
+        " {} {:<name_width$}{}  {} connected, {} seats, {}",
+        if active { "▶" } else { " " },
+        info.table,
+        place,
+        info.players,
+        info.seats,
+        state
+    );
+    let style = if active { yellow() } else { Style::new() };
+    Line::from(Span::styled(fit(&text, width), style))
 }
 
 pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
@@ -44,23 +73,14 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
         )));
     }
     for (k, f) in j.found.iter().enumerate().take(6) {
-        let active = j.row == k + 2;
-        let state = match f.info.compatibility() {
-            Err(m) => m.about_table(),
-            Ok(_) if f.info.playing => "playing".to_string(),
-            Ok(_) => "waiting".to_string(),
-        };
-        let text = format!(
-            " {} {}  {}  {} connected, {} seats, {}",
-            if active { "▶" } else { " " },
-            f.info.table,
-            f.address,
-            f.info.players,
-            f.info.seats,
-            state
-        );
-        let style = if active { yellow() } else { Style::new() };
-        lines.push(Line::from(Span::styled(fit(&text, inner_w), style)));
+        let place = f.address.to_string();
+        lines.push(table_line(
+            &f.info,
+            Some(&place),
+            j.row == k + 2,
+            0,
+            inner_w,
+        ));
     }
     lines.push(Line::from(""));
     let status = if app.connecting() {

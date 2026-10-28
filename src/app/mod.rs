@@ -81,6 +81,8 @@ pub enum Screen {
     Menu,
     Setup,
     Join,
+    /// Choosing one of the tables at a server with several.
+    Choose,
     Lobby,
     Table,
     Over,
@@ -235,6 +237,10 @@ pub struct App {
     discovery: Option<Receiver<Vec<Found>>>,
     last_discovery: Option<Instant>,
     connecting: Option<Receiver<io::Result<Connection>>>,
+    /// The table asked for when joining a server's table found on the network.
+    join_table: Option<String>,
+    /// The highlighted table on the choose screen.
+    pub choose_row: usize,
 }
 
 /// Lines moved by PgUp and PgDn in the help and the log.
@@ -354,6 +360,8 @@ impl App {
             discovery: None,
             last_discovery: None,
             connecting: None,
+            join_table: None,
+            choose_row: 0,
         }
     }
 

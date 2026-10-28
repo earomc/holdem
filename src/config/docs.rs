@@ -233,6 +233,22 @@ pub(super) const DOCS: &[(&str, &str)] = &[
         "server.away_seconds",
         "Seconds before a disconnected player's turn is folded for them.",
     ),
+    (
+        "server.tables",
+        "Several tables for `holdem serve`, all on the one port: players choose one when\n\
+         they join. One [[server.tables]] entry per table, each with a name (different for\n\
+         every table) and, if you like, its own seats, speed, fill_with_bots,\n\
+         starting_chips and small_blind; everything else comes from [game] and [server].\n\
+         Without entries, `holdem serve` runs one table called server.name. For example:\n\
+         \n\
+         [[server.tables]]\n\
+         name = \"Low stakes\"\n\
+         small_blind = 5\n\
+         \n\
+         [[server.tables]]\n\
+         name = \"Turbo\"\n\
+         speed = \"Fast\"",
+    ),
 ];
 
 pub(super) fn doc(path: &str) -> &'static str {

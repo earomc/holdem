@@ -60,6 +60,7 @@ impl App {
             conn,
             Some(server),
             &player,
+            None,
             self.config.client.log_lines,
         );
         if !host {
@@ -80,10 +81,13 @@ impl App {
         self.discovery = None;
     }
 
-    pub(super) fn connect_to(&mut self, address: String) {
+    /// Connects to the table at `address`; `table` names one of the server's
+    /// tables (from discovery), or `None` to be offered the server's list.
+    pub(super) fn connect_to(&mut self, address: String, table: Option<String>) {
         if self.connecting.is_some() {
             return;
         }
+        self.join_table = table;
         let port = self.config.server.port;
         let timeout = Duration::from_secs(u64::from(self.config.client.join.connect_seconds));
         let (tx, rx) = mpsc::channel();
@@ -140,6 +144,8 @@ impl App {
             return;
         };
         let next = match (&session.view, &session.lobby) {
+            // A server with several tables asks which one first.
+            _ if session.choices.is_some() => Screen::Choose,
             (Some(v), _) if v.game_over => Screen::Over,
             (Some(_), _) => Screen::Table,
             (None, Some(_)) => Screen::Lobby,
@@ -244,12 +250,15 @@ impl App {
         match result {
             Ok(conn) => {
                 let name = self.join.name.clone();
+                let table = self.join_table.take();
                 self.join.status.clear();
+                self.choose_row = 0;
                 self.enter_session(Session::new(
                     Kind::Guest,
                     conn,
                     None,
                     &name,
+                    table.as_deref(),
                     self.config.client.log_lines,
                 ));
                 self.screen = Screen::Lobby;

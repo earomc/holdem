@@ -11,7 +11,7 @@ use crate::protocol::{ClientMsg, ServerMsg};
 use crate::table::TableSettings;
 
 fn hello(c: &Connection, name: &str) {
-    c.send(ClientMsg::hello(name));
+    c.send(ClientMsg::hello(name, None));
 }
 
 /// Waits for a table view that satisfies `pred`.
@@ -136,7 +136,7 @@ fn unknown_messages_are_answered_not_fatal() {
         w.write_all(text.as_bytes()).unwrap();
         w.write_all(b"\n").unwrap();
     };
-    send(&serde_json::to_string(&ClientMsg::hello("Future")).unwrap());
+    send(&serde_json::to_string(&ClientMsg::hello("Future", None)).unwrap());
     r.read_line(&mut line).unwrap();
     assert!(line.contains("Welcome"), "{}", line);
     // A request from some future version of holdem.
@@ -197,4 +197,98 @@ fn addresses_get_the_default_port() {
     assert!(connect(&format!("127.0.0.1:{port}"), 1, Duration::from_secs(2)).is_ok());
     assert!(connect("127.0.0.1", port, Duration::from_secs(2)).is_ok());
     assert!(connect("localhost", port, Duration::from_secs(2)).is_ok());
+}
+
+/// Two tables behind one port.
+fn two_tables() -> Server {
+    let table = |name: &str| TableSettings {
+        name: name.to_string(),
+        speed_ms: 20,
+        ..TableSettings::default()
+    };
+    let (server, _log) =
+        Server::start_tables(vec![table("Low"), table("High")], Some(0), 1).expect("starts");
+    server
+}
+
+/// The next message that is not a table or lobby update.
+fn next_reply(c: &Connection) -> ServerMsg {
+    loop {
+        match c.incoming.recv_timeout(Duration::from_secs(5)) {
+            Ok(ServerMsg::Lobby(_) | ServerMsg::Table(_)) => {}
+            Ok(m) => return m,
+            Err(e) => panic!("no answer from the server: {e}"),
+        }
+    }
+}
+
+#[test]
+fn a_greeting_naming_a_table_goes_to_that_table() {
+    let server = two_tables();
+    let c = connect("127.0.0.1", server.port.unwrap(), Duration::from_secs(5)).unwrap();
+    c.send(ClientMsg::hello("Ann", Some("High")));
+    assert!(matches!(next_reply(&c), ServerMsg::Welcome { table, .. } if table == "High"));
+}
+
+#[test]
+fn without_a_table_the_client_chooses_from_the_list() {
+    let server = two_tables();
+    let c = connect("127.0.0.1", server.port.unwrap(), Duration::from_secs(5)).unwrap();
+    c.send(ClientMsg::hello("Ann", None));
+    let ServerMsg::Tables(tables) = next_reply(&c) else {
+        panic!("expected the list of tables");
+    };
+    let names: Vec<&str> = tables.iter().map(|t| t.table.as_str()).collect();
+    assert_eq!(names, ["Low", "High"]);
+    // A name that is not there: the list again.
+    c.send(ClientMsg::ChooseTable("Middle".to_string()));
+    assert!(matches!(next_reply(&c), ServerMsg::Notice(_)));
+    assert!(matches!(next_reply(&c), ServerMsg::Tables(_)));
+    c.send(ClientMsg::ChooseTable("Low".to_string()));
+    assert!(matches!(next_reply(&c), ServerMsg::Welcome { table, .. } if table == "Low"));
+}
+
+#[test]
+fn older_programs_land_at_the_first_table() {
+    let server = two_tables();
+    let c = connect("127.0.0.1", server.port.unwrap(), Duration::from_secs(5)).unwrap();
+    // What holdem 0.4 to 0.7 send: protocol 3, no table.
+    c.send(ClientMsg::Hello {
+        name: "Old".to_string(),
+        version: 3,
+        min_version: Some(3),
+        app: "0.7.0".to_string(),
+        table: None,
+    });
+    assert!(
+        matches!(next_reply(&c), ServerMsg::Welcome { table, version: 3, .. } if table == "Low")
+    );
+}
+
+#[test]
+fn names_are_unique_per_table_not_per_server() {
+    let server = two_tables();
+    let port = server.port.unwrap();
+    let a = connect("127.0.0.1", port, Duration::from_secs(5)).unwrap();
+    let b = connect("127.0.0.1", port, Duration::from_secs(5)).unwrap();
+    a.send(ClientMsg::hello("Ann", Some("Low")));
+    b.send(ClientMsg::hello("Ann", Some("High")));
+    for c in [&a, &b] {
+        assert!(matches!(next_reply(c), ServerMsg::Welcome { name, .. } if name == "Ann"));
+    }
+}
+
+#[test]
+fn discovery_finds_every_table_of_a_server() {
+    let server = two_tables();
+    let port = server.port.unwrap();
+    let found = discover(port, Duration::from_millis(500));
+    let mut names: Vec<&str> = found
+        .iter()
+        .filter(|f| f.info.port == port)
+        .map(|f| f.info.table.as_str())
+        .collect();
+    names.sort();
+    names.dedup();
+    assert_eq!(names, ["High", "Low"]);
 }
