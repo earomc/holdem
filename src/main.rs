@@ -568,13 +568,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("holdem.toml");
-        std::fs::write(
-            &path,
-            "[game]
-seats = 4
-",
-        )
-        .unwrap();
+        std::fs::write(&path, "[game]\nseats = 4\n").unwrap();
         let write = |force| {
             run_config(
                 &ConfigAction::Write {

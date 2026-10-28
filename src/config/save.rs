@@ -98,10 +98,7 @@ pub fn save(path: &Path, config: &Config) -> Result<SaveReport, String> {
     // Never write a file that holdem itself could not read back.
     let text = match existing {
         Some(_) => doc.to_string(),
-        None => format!(
-            "{HEADER}
-{doc}"
-        ),
+        None => format!("{HEADER}\n{doc}"),
     };
     Config::parse(&text).map_err(|e| at(&format!("the saved file would not load: {e}")))?;
     write_atomically(path, &text).map_err(|e| at(&e))?;
