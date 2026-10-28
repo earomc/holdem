@@ -26,8 +26,8 @@ called `holdem`:
 - **`holdem-server`**, the same game without sound and without any audio libraries, for
   dedicated servers. For Linux there are also static `musl` builds that run on any distribution.
 
-`holdem --version` shows which one you have: `holdem 0.6.1 (with sound)` or
-`holdem 0.6.1 (without sound)`.
+`holdem --version` shows which one you have: `holdem 0.7.0 (with sound)` or
+`holdem 0.7.0 (without sound)`.
 
 The installers put the program in `~/.cargo/bin`. The archives on the
 [releases page](https://github.com/earomc/holdem/releases) contain just the program, to run

@@ -6,6 +6,8 @@ All notable changes to holdem. The format follows
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-28
+
 ### Added
 - Save your settings from the game: `W` on the setup screen or in the settings window writes
   your name, speed, volume, win-chance hint and table options to `holdem.toml`. Only those
@@ -20,6 +22,8 @@ All notable changes to holdem. The format follows
 
 ### Changed
 - `holdem config write --force` keeps the values of the file it replaces.
+- The in-game glossary explains "Two pair" and "Four of a kind", and "Win chance" in its own
+  words. The glossary in `docs/poker.md` is now generated from it, so the two always agree.
 
 ## [0.6.1] - 2026-10-28
 
@@ -50,6 +54,7 @@ All notable changes to holdem. The format follows
 
 Versions before 0.6.0 are not listed here.
 
-[Unreleased]: https://github.com/earomc/holdem/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/earomc/holdem/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/earomc/holdem/releases/tag/v0.7.0
 [0.6.1]: https://github.com/earomc/holdem/releases/tag/v0.6.1
 [0.6.0]: https://github.com/earomc/holdem/releases/tag/v0.6.0

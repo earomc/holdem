@@ -72,7 +72,7 @@ Releases are built by [dist](https://axodotdev.github.io/cargo-dist/) (formerly 
 `[workspace.package]` of `Cargo.toml`, move the `Unreleased` entries in
 `CHANGELOG.md` under a heading for the new version (dist uses that section as the release
 notes), commit, and push a tag with that version:
-`git tag v0.6.2 && git push origin v0.6.2`. GitHub Actions then builds every archive and
+`git tag v0.7.1 && git push origin v0.7.1`. GitHub Actions then builds every archive and
 installer and publishes the release. `dist plan` shows what a release will contain.
 
 ## How it is built
@@ -113,5 +113,5 @@ agree on the newest version both speak. If there is none, you are told in plain 
 you or the host needs to update, instead of the game failing in odd ways. The join screen marks
 tables found on your network that need another version. Within a protocol version, messages
 tolerate missing and extra fields, and a message of an unknown kind is skipped or answered with
-a notice rather than ending the connection. Versions 0.4 to 0.6 speak protocol 3; holdem 0.3 spoke
+a notice rather than ending the connection. Versions 0.4 to 0.7 speak protocol 3; holdem 0.3 spoke
 protocol 2 and is told to update.
