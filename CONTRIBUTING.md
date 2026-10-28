@@ -57,20 +57,26 @@ through TCP (one JSON message per line) for everyone else. One code path drives 
 all three cases. The server is authoritative, so players cannot cheat by changing their
 client.
 
-| File | Purpose |
+The library (`src/lib.rs`) is the engine and the server; the program (`src/main.rs`) is the
+terminal front end. A module that grew large is a folder whose `mod.rs` says how it is split.
+
+| Module | Purpose |
 | --- | --- |
-| `src/card.rs`, `src/eval.rs` | cards, deck, shuffling; the 5-to-7-card hand evaluator |
-| `src/game.rs` | the rules as a state machine: betting, pots, showdown, options, seats, standings |
-| `src/bot.rs` | bot styles (each with its description and measured statistics), equity simulation, decisions |
-| `src/stats.rs` | playing statistics and the style estimate |
-| `src/table.rs` | the table server's logic: seating, bots' timing, time limits, rebuys, players coming and going, per-player views |
-| `src/protocol.rs` | the messages between table and clients, and what each player may see |
-| `src/net.rs` | running a table on a thread, TCP connections, LAN discovery |
-| `src/config.rs` | `holdem.toml`: reading, checking, and writing it with every setting explained |
-| `src/main.rs`, `src/app.rs`, `src/session.rs` | command line, screen state and input, the client's side of a game |
-| `src/keys.rs` | every key binding in one table: input, the key reminders on screen and the Keys help page all come from it |
-| `src/ui.rs`, `src/popups.rs`, `src/help.rs` | drawing, windows, help text (generated where it quotes keys, styles or defaults) |
-| `src/sound.rs` | sound synthesis and playback |
+| `card`, `eval` | cards, deck, shuffling; the 5-to-7-card hand evaluator |
+| `game/` | the rules as a state machine: `rules`, `pots`, and `Game`'s methods by stage (`seats`, `hand`, `betting`, `showdown`, `queries`) |
+| `bot/` | bot styles (each with its description and measured statistics); `decide`: equity simulation and decisions |
+| `stats` | playing statistics and the style estimate |
+| `table/` | the table server: `connections`, `messages`, `flow` (games, seats, bots, time limits), `views` (what each player may see) |
+| `protocol` | the messages between table and clients |
+| `net/` | running a table on a thread (`server`), connecting and finding tables (`client`) |
+| `config/` | `holdem.toml`: the settings and defaults, `load`, `render` (with `docs`), `save` |
+| `main`, `cli`, `serve`, `config_command` | the program: the command line, `holdem serve`, `holdem config` |
+| `app/` | screen state and input: `input`, `setup`, `table`, `settings`, `lifecycle` |
+| `session` | the client's side of a game |
+| `keys` | every key binding in one table: input, the key reminders on screen and the Keys help page all come from it |
+| `ui/` | drawing: one module per screen, `popups` for the windows on top, shared `style`, `text`, `cards`, `log` |
+| `help/` | the help pages, one module per page; `docs` keeps `docs/poker.md` in step with them |
+| `sound` | sound synthesis and playback |
 | `tests/` | rule scenarios, a side-pot oracle, random-play fuzzing across all options, style recognition |
 | `examples/calibrate.rs`, `examples/strength.rs` | the measurements behind the bot tuning and the style estimate |
 
