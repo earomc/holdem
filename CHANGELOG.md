@@ -6,6 +6,8 @@ All notable changes to holdem. The format follows
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-28
+
 ### Added
 - Every player has a colored symbol next to their name, on the seats and in the lobby. It
   follows from the name, so the same name always gets the same symbol.
@@ -103,7 +105,8 @@ All notable changes to holdem. The format follows
 
 Versions before 0.6.0 are not listed here.
 
-[Unreleased]: https://github.com/earomc/holdem/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/earomc/holdem/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/earomc/holdem/releases/tag/v0.9.0
 [0.8.0]: https://github.com/earomc/holdem/releases/tag/v0.8.0
 [0.7.0]: https://github.com/earomc/holdem/releases/tag/v0.7.0
 [0.6.1]: https://github.com/earomc/holdem/releases/tag/v0.6.1
