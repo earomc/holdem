@@ -6,6 +6,8 @@ All notable changes to holdem. The format follows
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-28
+
 ### Added
 - MIT `LICENSE` file, also included in the release archives.
 - `CHANGELOG.md`; its section for a version becomes the release notes.
@@ -33,5 +35,6 @@ All notable changes to holdem. The format follows
 
 Versions before 0.6.0 are not listed here.
 
-[Unreleased]: https://github.com/earomc/holdem/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/earomc/holdem/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/earomc/holdem/releases/tag/v0.6.1
 [0.6.0]: https://github.com/earomc/holdem/releases/tag/v0.6.0
