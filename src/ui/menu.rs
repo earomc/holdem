@@ -4,11 +4,9 @@ use ratatui::Frame;
 use ratatui::layout::{Alignment, Rect};
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
 
-use super::style::{centered, dim, reminder, yellow};
-use super::text::wrap_text;
-use super::title_block;
+use super::style::{dim, reminder, yellow};
+use super::{boxed, fitted, title_block};
 use crate::app::{App, MenuItem};
 use crate::keys::Place;
 
@@ -31,15 +29,12 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
     }
     lines.push(Line::from(""));
     lines.push(Line::from(reminder(&[], Place::Menu)));
-    // Wrapped, not cut: the hint at the end and a long file path both matter.
-    for l in wrap_text(&app.config_note, 56, 0) {
-        lines.push(Line::from(Span::styled(l, dim())));
-    }
-    let rect = centered(area, 60, lines.len() as u16 + 2);
+    // Wrapped like everything else: the hint at the end and a long file path both matter.
+    lines.push(Line::from(Span::styled(app.config_note.clone(), dim())));
+    let (rect, lines) = fitted(area, 60, lines);
     frame.render_widget(
-        Paragraph::new(lines)
-            .alignment(Alignment::Center)
-            .block(title_block("♠ ♥  TEXAS HOLD'EM  ♦ ♣")),
+        boxed(lines, title_block("♠ ♥  TEXAS HOLD'EM  ♦ ♣", rect), rect)
+            .alignment(Alignment::Center),
         rect,
     );
 }

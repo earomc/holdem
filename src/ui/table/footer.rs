@@ -9,7 +9,7 @@ use holdem::protocol::TableView;
 use crate::app::App;
 use crate::keys::{self, Cmd, Place};
 use crate::ui::style::{dim, green, key, key_for, yellow};
-use crate::ui::text::fit;
+use crate::ui::text::{fit, wrap_lines};
 
 pub(super) fn action_spans(v: &TableView) -> Vec<Span<'static>> {
     let Some(l) = v.legal else {
@@ -164,16 +164,19 @@ pub(super) fn footer_lines(app: &App, v: &TableView, width: usize) -> Vec<Line<'
     } else {
         app.toast_text().map(|t| {
             Line::from(Span::styled(
-                fit(t, width),
+                t.to_string(),
                 Style::new().fg(Color::LightRed),
             ))
         })
     };
     if let Some(line) = extra {
-        while lines.len() >= 3 {
+        // A message is shown whole: the oldest lines make room for it.
+        let message: Vec<Line<'static>> =
+            wrap_lines(vec![line], width).into_iter().take(3).collect();
+        while lines.len() + message.len() > 3 {
             lines.remove(0);
         }
-        lines.push(line);
+        lines.extend(message);
     } else if lines.len() < 3 {
         lines.push(Line::from(Span::styled(
             fit(&keys::reminder_text(Place::Table), width),

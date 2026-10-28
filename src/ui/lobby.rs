@@ -4,13 +4,12 @@ use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
 
 use holdem::game::chips_text;
 
 use super::style::{bold, centered, cyan, dim, green, reminder};
-use super::text::{fit, wrap_text};
-use super::title_block;
+use super::text::wrap_text;
+use super::{boxed, screen_box, title_block};
 use crate::app::App;
 use crate::keys::Place;
 
@@ -63,10 +62,7 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
                     Span::styled(addr.clone(), cyan()),
                 ]));
                 lines.push(Line::from(Span::styled(
-                    fit(
-                        " (on the same network; for internet games forward this port in your router)",
-                        inner_w,
-                    ),
+                    " (on the same network; for internet games forward this port in your router)",
                     dim(),
                 )));
                 lines.push(Line::from(""));
@@ -105,15 +101,15 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
             }
         }
     }
-    while lines.len() < 16 {
-        lines.push(Line::from(""));
-    }
-    lines.push(Line::from(" The game starts when everyone is ready."));
-    lines.push(Line::from(reminder(&[], Place::Lobby)));
+    let footer = vec![
+        Line::from(" The game starts when everyone is ready."),
+        Line::from(reminder(&[], Place::Lobby)),
+    ];
+    let (rect, lines) = screen_box(area, 76, 20, lines, footer);
     let title = if session.table.is_empty() {
         "Lobby".to_string()
     } else {
         session.table.clone()
     };
-    frame.render_widget(Paragraph::new(lines).block(title_block(&title)), rect);
+    frame.render_widget(boxed(lines, title_block(&title, rect), rect), rect);
 }

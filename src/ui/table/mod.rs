@@ -4,17 +4,17 @@ use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Layout, Rect};
 use ratatui::style::{Color, Style};
 use ratatui::text::Line;
-use ratatui::widgets::{Paragraph, Wrap};
 
 use holdem::protocol::TableView;
 
 use super::log::log_view;
 use super::popups;
 use super::style::{centered, framed, key_for};
-use super::text::{fit, text_width};
+use super::text::text_width;
 use crate::app::App;
 use crate::keys::{Cmd, Place};
 use crate::session::Kind;
+use crate::ui::{boxed, one_line, plain};
 use footer::footer_lines;
 use middle::{draw_board, draw_pot};
 use seats::draw_seat;
@@ -56,11 +56,9 @@ fn draw_header(frame: &mut Frame, app: &App, v: &TableView, area: Rect) {
     );
     let right_w = (text_width(&right) as u16).min(area.width);
     let [l, r] = Layout::horizontal([Constraint::Min(0), Constraint::Length(right_w)]).areas(area);
-    frame.render_widget(Paragraph::new(fit(&left, l.width as usize)).style(style), l);
+    frame.render_widget(one_line(&left, l).style(style), l);
     frame.render_widget(
-        Paragraph::new(right)
-            .style(style)
-            .alignment(Alignment::Right),
+        one_line(&right, r).style(style).alignment(Alignment::Right),
         r,
     );
 }
@@ -85,9 +83,10 @@ const MIN_WIDTH: u16 = 80;
 
 pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
     let Some(v) = app.view() else {
+        let rect = centered(area, 30, 1);
         frame.render_widget(
-            Paragraph::new("Shuffling…").alignment(Alignment::Center),
-            centered(area, 30, 1),
+            one_line("Shuffling…", rect).alignment(Alignment::Center),
+            rect,
         );
         return;
     };
@@ -105,11 +104,10 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
             area.height,
             key_for(Place::Table, Cmd::Leave)
         );
+        let rect = centered(area, area.width.min(60), 6);
         frame.render_widget(
-            Paragraph::new(msg)
-                .wrap(Wrap { trim: true })
-                .alignment(Alignment::Center),
-            centered(area, area.width.min(60), 6),
+            plain(vec![Line::from(msg)], rect).alignment(Alignment::Center),
+            rect,
         );
         return;
     }
@@ -163,15 +161,12 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
         let inner_w = log_area.width.saturating_sub(2) as usize;
         let (lines, _) = log_view(&session.log, inner_h, inner_w, 0);
         let block = framed(Line::from(" Log (L: full log) "), Color::DarkGray);
-        frame.render_widget(Paragraph::new(lines).block(block), log_area);
+        frame.render_widget(boxed(lines, block, log_area), log_area);
     }
 
     let block = framed(Line::from(" Your move "), Color::Gray);
     let inner_w = footer.width.saturating_sub(2) as usize;
-    frame.render_widget(
-        Paragraph::new(footer_lines(app, v, inner_w)).block(block),
-        footer,
-    );
+    frame.render_widget(boxed(footer_lines(app, v, inner_w), block, footer), footer);
 
     if let Some(prompt) = &app.raise {
         popups::raise(frame, v, prompt, table_area);

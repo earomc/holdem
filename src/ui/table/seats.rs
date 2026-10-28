@@ -4,11 +4,11 @@ use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
 
 use holdem::game::{State, chips_text, ordinal};
 use holdem::protocol::{SeatView, TableView};
 
+use crate::ui::boxed;
 use crate::ui::cards::{cards_line, hidden_line};
 use crate::ui::style::{bold, dim, framed, green};
 
@@ -111,5 +111,5 @@ pub(super) fn draw_seat(frame: &mut Frame, v: &TableView, seat: usize, area: Rec
             lines.push(hidden_line());
         }
     }
-    frame.render_widget(Paragraph::new(lines).block(block), area);
+    frame.render_widget(boxed(lines, block, area), area);
 }

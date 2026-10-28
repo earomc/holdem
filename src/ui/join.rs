@@ -4,14 +4,14 @@ use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
+
+use holdem::protocol::Announcement;
 
 use super::style::{bold, centered, dim, key_for, reminder, yellow};
-use super::text::{fit, wrap_text};
-use super::title_block;
+use super::text::wrap_text;
+use super::{boxed, screen_box, title_block};
 use crate::app::App;
 use crate::keys::{Cmd, Place};
-use holdem::protocol::Announcement;
 
 fn input_line(label: &str, value: &str, active: bool) -> Line<'static> {
     let cursor = if active { "▏" } else { "" };
@@ -29,7 +29,6 @@ pub(super) fn table_line(
     address: Option<&str>,
     active: bool,
     name_width: usize,
-    width: usize,
 ) -> Line<'static> {
     let state = match info.compatibility() {
         Err(m) => m.about_table(),
@@ -47,7 +46,7 @@ pub(super) fn table_line(
         state
     );
     let style = if active { yellow() } else { Style::new() };
-    Line::from(Span::styled(fit(&text, width), style))
+    Line::from(Span::styled(text, style))
 }
 
 pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
@@ -74,13 +73,7 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
     }
     for (k, f) in j.found.iter().enumerate().take(6) {
         let place = f.address.to_string();
-        lines.push(table_line(
-            &f.info,
-            Some(&place),
-            j.row == k + 2,
-            0,
-            inner_w,
-        ));
+        lines.push(table_line(&f.info, Some(&place), j.row == k + 2, 0));
     }
     lines.push(Line::from(""));
     let status = if app.connecting() {
@@ -88,23 +81,17 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
     } else {
         j.status.clone()
     };
-    for l in wrap_text(&status, inner_w.saturating_sub(2), 0)
-        .into_iter()
-        .take(2)
-    {
+    for l in wrap_text(&status, inner_w.saturating_sub(2), 0) {
         lines.push(Line::from(Span::styled(
             format!(" {l}"),
             Style::new().fg(Color::LightRed),
         )));
     }
-    while lines.len() < (height as usize).saturating_sub(3) {
-        lines.push(Line::from(""));
-    }
     let mut spans = reminder(&[], Place::Join);
     spans.push(Span::raw("   type to edit"));
-    lines.push(Line::from(spans));
+    let (rect, lines) = screen_box(area, 76, height, lines, vec![Line::from(spans)]);
     frame.render_widget(
-        Paragraph::new(lines).block(title_block("Join a network game")),
+        boxed(lines, title_block("Join a network game", rect), rect),
         rect,
     );
 }

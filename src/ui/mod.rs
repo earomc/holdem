@@ -68,7 +68,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
             1.min(area.height),
         );
         frame.render_widget(
-            Paragraph::new(fit(t, area.width as usize))
+            one_line(t, rect)
                 .style(Style::new().fg(Color::Black).bg(Color::LightRed))
                 .alignment(Alignment::Center),
             rect,
@@ -76,10 +76,69 @@ pub fn draw(frame: &mut Frame, app: &App) {
     }
 }
 
-fn title_block(text: &str) -> Block<'static> {
+/// The frame of a screen, its title cut to fit a box `rect` wide.
+fn title_block(text: &str, rect: Rect) -> Block<'static> {
+    let room = (rect.width as usize).saturating_sub(4);
     framed(
-        Line::from(Span::styled(format!(" {text} "), yellow())),
+        Line::from(Span::styled(format!(" {} ", fit(text, room)), yellow())),
         Color::Green,
     )
     .title_alignment(Alignment::Center)
+}
+
+// Text is only ever drawn through the next four functions, so it never runs
+// over the edge of its box: lines are wrapped (or, on one-line bars, cut with
+// an ellipsis). A test checks that nothing else in `ui` makes a `Paragraph`.
+
+/// Text in a box drawn at `rect`: every line is wrapped to the inside width.
+fn boxed(lines: Vec<Line<'static>>, block: Block<'static>, rect: Rect) -> Paragraph<'static> {
+    let inside = rect.width.saturating_sub(2) as usize;
+    Paragraph::new(text::wrap_lines(lines, inside)).block(block)
+}
+
+/// Text without a box, drawn at `rect`: every line is wrapped to its width.
+fn plain(lines: Vec<Line<'static>>, rect: Rect) -> Paragraph<'static> {
+    Paragraph::new(text::wrap_lines(lines, rect.width as usize))
+}
+
+/// A one-line bar at `rect`, cut with an ellipsis if it is too long.
+fn one_line(text: &str, rect: Rect) -> Paragraph<'static> {
+    Paragraph::new(fit(text, rect.width as usize))
+}
+
+/// A screen's box in the middle of `area`: `width` wide (at most the screen)
+/// and at least `min_height` high, taller if its wrapped text needs it (up to
+/// the screen). `body` goes at the top and `footer` at the bottom, with blank
+/// lines between. If even the screen is too small, the body gives way: the
+/// footer holds the keys. Returns where to draw and the lines.
+fn screen_box(
+    area: Rect,
+    width: u16,
+    min_height: u16,
+    body: Vec<Line<'static>>,
+    footer: Vec<Line<'static>>,
+) -> (Rect, Vec<Line<'static>>) {
+    let width = width.min(area.width);
+    let inside = width.saturating_sub(2) as usize;
+    let footer = text::wrap_lines(footer, inside);
+    let mut lines = text::wrap_lines(body, inside);
+    let needed = (lines.len() + footer.len() + 2) as u16;
+    let height = needed.max(min_height).min(area.height);
+    let room = (height as usize).saturating_sub(2);
+    lines.truncate(room.saturating_sub(footer.len()));
+    while lines.len() + footer.len() < room {
+        lines.push(Line::from(""));
+    }
+    lines.extend(footer);
+    (style::centered(area, width, height), lines)
+}
+
+/// Where to draw a box `width` wide (at most the screen) and as high as its
+/// `lines` once wrapped (at most the screen), in the middle of `area`; and the
+/// wrapped lines.
+fn fitted(area: Rect, width: u16, lines: Vec<Line<'static>>) -> (Rect, Vec<Line<'static>>) {
+    let width = width.min(area.width);
+    let lines = text::wrap_lines(lines, width.saturating_sub(2) as usize);
+    let height = (lines.len() as u16).saturating_add(2).min(area.height);
+    (style::centered(area, width, height), lines)
 }

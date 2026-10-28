@@ -3,12 +3,11 @@
 use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
 
 use super::join::table_line;
-use super::style::{bold, centered, reminder};
+use super::style::{bold, reminder};
 use super::text::text_width;
-use super::title_block;
+use super::{boxed, fitted, title_block};
 use crate::app::App;
 use crate::keys::Place;
 
@@ -18,10 +17,6 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
         .as_ref()
         .and_then(|s| s.choices.clone())
         .unwrap_or_default();
-    let shown = tables.len().min(12);
-    let height = (shown + 7) as u16;
-    let rect = centered(area, 76, height);
-    let inner_w = rect.width.saturating_sub(2) as usize;
     let mut lines = vec![
         Line::from(""),
         Line::from(Span::styled(
@@ -38,21 +33,14 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
         .map(|t| text_width(&t.table))
         .max()
         .unwrap_or(0);
-    for (k, t) in tables.iter().enumerate().take(shown) {
-        lines.push(table_line(
-            t,
-            None,
-            k == app.choose_row,
-            name_width,
-            inner_w,
-        ));
+    for (k, t) in tables.iter().enumerate() {
+        lines.push(table_line(t, None, k == app.choose_row, name_width));
     }
-    while lines.len() < (height as usize).saturating_sub(3) {
-        lines.push(Line::from(""));
-    }
+    lines.push(Line::from(""));
     lines.push(Line::from(reminder(&[], Place::Choose)));
+    let (rect, lines) = fitted(area, 76, lines);
     frame.render_widget(
-        Paragraph::new(lines).block(title_block("Choose a table")),
+        boxed(lines, title_block("Choose a table", rect), rect),
         rect,
     );
 }

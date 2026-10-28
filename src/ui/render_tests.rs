@@ -332,3 +332,37 @@ fn the_choose_screen_renders_at_every_size() {
         "{text}"
     );
 }
+
+/// Text only reaches the screen through `boxed`, `plain`, `one_line` and
+/// `fitted` in `ui/mod.rs`, which wrap or fit every line, so it never runs over
+/// the edge of its box. A `Paragraph` made anywhere else could.
+#[test]
+fn text_is_only_drawn_through_the_wrapping_helpers() {
+    let ui = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .map(|dir| dir.join("src").join("ui"))
+        .find(|d| d.is_dir())
+        .expect("src/ui is in the repository");
+    let mut stack = vec![ui];
+    let mut offenders = Vec::new();
+    while let Some(dir) = stack.pop() {
+        for entry in std::fs::read_dir(&dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                stack.push(path);
+                continue;
+            }
+            // Paths compare by component, so this also matches ui\mod.rs on Windows.
+            let is_helpers = path.ends_with("ui/mod.rs");
+            let text = std::fs::read_to_string(&path).unwrap();
+            let needle = ["Paragraph", "::new("].concat();
+            if !is_helpers && text.contains(&needle) {
+                offenders.push(path.display().to_string());
+            }
+        }
+    }
+    assert!(
+        offenders.is_empty(),
+        "draw text with boxed/plain/one_line instead: {offenders:?}"
+    );
+}

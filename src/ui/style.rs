@@ -57,6 +57,9 @@ pub(super) fn reminder(lead: &[(String, &str)], place: Place) -> Vec<Span<'stati
 }
 
 /// Key reminder spans from (key, words) entries.
+/// A space that line wrapping does not break at (see `text::wrap_lines`).
+pub(super) const NO_BREAK: char = '\u{a0}';
+
 pub(super) fn reminder_spans<'a>(
     entries: impl Iterator<Item = (String, &'a str)>,
 ) -> Vec<Span<'static>> {
@@ -66,7 +69,8 @@ pub(super) fn reminder_spans<'a>(
             spans.push(Span::raw("   "));
         }
         spans.push(key(&k));
-        spans.push(Span::raw(format!(" {words}")));
+        // A no-break space: wrapping keeps a key and its word on one line.
+        spans.push(Span::raw(format!("{NO_BREAK}{words}")));
     }
     spans
 }

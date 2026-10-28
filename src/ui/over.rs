@@ -4,13 +4,13 @@ use ratatui::Frame;
 use ratatui::layout::{Alignment, Rect};
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
 
 use holdem::game::ordinal;
 use holdem::stats;
 
-use super::style::{centered, dim, framed, key_for, reminder, yellow};
+use super::style::{dim, framed, key_for, reminder, yellow};
 use super::text::{fit, wrap_text};
+use super::{boxed, fitted};
 use crate::app::App;
 use crate::keys::{Cmd, Place};
 use crate::session::Kind;
@@ -74,7 +74,7 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
         } else {
             Style::new()
         };
-        lines.push(Line::from(Span::styled(fit(&text, inner_w), style)));
+        lines.push(Line::from(Span::styled(text, style)));
     }
     if v.standings.len() > 12 {
         lines.push(Line::from(Span::styled(
@@ -99,13 +99,8 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
         if solo { "main menu" } else { "play again" },
     );
     lines.push(Line::from(reminder(&[next], Place::Over)));
-    let height = (lines.len() + 2) as u16;
     let block =
         framed(Line::from(" Final standings "), Color::Green).title_alignment(Alignment::Center);
-    frame.render_widget(
-        Paragraph::new(lines)
-            .alignment(Alignment::Center)
-            .block(block),
-        centered(area, width, height),
-    );
+    let (rect, lines) = fitted(area, width, lines);
+    frame.render_widget(boxed(lines, block, rect).alignment(Alignment::Center), rect);
 }

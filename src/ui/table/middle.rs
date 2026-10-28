@@ -6,12 +6,13 @@ use ratatui::Frame;
 use ratatui::layout::{Alignment, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, BorderType, Paragraph};
+use ratatui::widgets::{Block, BorderType};
 
 use holdem::game::{State, chips_text};
 use holdem::protocol::TableView;
 
 use crate::app::App;
+use crate::ui::boxed;
 use crate::ui::cards::board_line;
 use crate::ui::style::{bold, dim, framed, green};
 use crate::ui::text::{fit, text_width};
@@ -102,12 +103,7 @@ pub(super) fn draw_board(frame: &mut Frame, v: &TableView, area: Rect) {
         ],
         area,
     );
-    frame.render_widget(
-        Paragraph::new(lines)
-            .alignment(Alignment::Center)
-            .block(block),
-        area,
-    );
+    frame.render_widget(boxed(lines, block, area).alignment(Alignment::Center), area);
 }
 
 /// The pot measured in big blinds, e.g. "worth 9.5 big blinds": how big it is
@@ -210,12 +206,7 @@ pub(super) fn draw_pot(frame: &mut Frame, app: &App, v: &TableView, area: Rect) 
     };
     lines.push(extra);
     let lines = centre_vertically(lines, area);
-    frame.render_widget(
-        Paragraph::new(lines)
-            .alignment(Alignment::Center)
-            .block(block),
-        area,
-    );
+    frame.render_widget(boxed(lines, block, area).alignment(Alignment::Center), area);
 }
 
 #[cfg(test)]

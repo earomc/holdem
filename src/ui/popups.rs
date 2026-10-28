@@ -5,7 +5,7 @@ use ratatui::Frame;
 use ratatui::layout::{Alignment, Rect};
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, BorderType, Clear, Paragraph};
+use ratatui::widgets::{Block, BorderType, Clear};
 
 use holdem::game::chips_text;
 use holdem::protocol::TableView;
@@ -14,6 +14,7 @@ use holdem::stats;
 use super::log::log_view;
 use super::style::{centered, cyan, dim, key_for, reminder, reminder_spans, yellow};
 use super::text::{fit, text_width, wrap_text};
+use super::{boxed, fitted};
 use crate::app::{App, LeaveChoice, RaisePrompt, SettingsRow, pot_raise_to};
 use crate::help::{self, Item};
 use crate::keys::{self, Cmd, Place};
@@ -29,8 +30,6 @@ fn window(title: String, color: Color) -> Block<'static> {
 // ------------------------------------------------------------------ leave
 
 pub(super) fn leave(frame: &mut Frame, app: &App, selected: usize, area: Rect) {
-    let rect = centered(area, 60, 10);
-    frame.render_widget(Clear, rect);
     let warning = match app.session.as_ref() {
         Some(s) if s.kind == Kind::Host => {
             "You are hosting: everyone at your table will be disconnected."
@@ -55,8 +54,10 @@ pub(super) fn leave(frame: &mut Frame, app: &App, selected: usize, area: Rect) {
     }
     lines.push(Line::from(""));
     lines.push(Line::from(reminder(&[], Place::LeaveWindow)));
+    let (rect, lines) = fitted(area, 60, lines);
+    frame.render_widget(Clear, rect);
     frame.render_widget(
-        Paragraph::new(lines).block(window(" Leave? ".to_string(), Color::Red)),
+        boxed(lines, window(" Leave? ".to_string(), Color::Red), rect),
         rect,
     );
 }
@@ -64,8 +65,6 @@ pub(super) fn leave(frame: &mut Frame, app: &App, selected: usize, area: Rect) {
 // ------------------------------------------------------------------ settings
 
 pub(super) fn settings(frame: &mut Frame, app: &App, area: Rect) {
-    let rect = centered(area, 58, 11);
-    frame.render_widget(Clear, rect);
     let mut lines = vec![Line::from("")];
     for (i, row) in SettingsRow::ALL.iter().enumerate() {
         let label = row.label();
@@ -98,8 +97,10 @@ pub(super) fn settings(frame: &mut Frame, app: &App, area: Rect) {
     };
     lines.push(Line::from(Span::styled(note, dim())));
     lines.push(Line::from(reminder(&[], Place::SettingsWindow)));
+    let (rect, lines) = fitted(area, 58, lines);
+    frame.render_widget(Clear, rect);
     frame.render_widget(
-        Paragraph::new(lines).block(window(" Settings ".to_string(), Color::Cyan)),
+        boxed(lines, window(" Settings ".to_string(), Color::Cyan), rect),
         rect,
     );
 }
@@ -128,7 +129,7 @@ pub(super) fn log(frame: &mut Frame, app: &App, area: Rect) {
         format!(" Hand log  ({keys}) ")
     };
     frame.render_widget(
-        Paragraph::new(lines).block(window(fit(&title, inner_w), Color::Cyan)),
+        boxed(lines, window(fit(&title, inner_w), Color::Cyan), rect),
         rect,
     );
 }
@@ -141,9 +142,6 @@ fn bar(share: f32, width: usize) -> String {
 }
 
 pub(super) fn profile(frame: &mut Frame, app: &App, area: Rect) {
-    let rect = centered(area, 74, 20);
-    frame.render_widget(Clear, rect);
-    let inner_w = rect.width.saturating_sub(2) as usize;
     let stats = app.view().map(|v| v.your_stats).unwrap_or_default();
     let facts = app.help_facts();
     let (min_hands, min_stack) = (facts.style_min_hands, facts.style_min_stack_bb);
@@ -152,7 +150,7 @@ pub(super) fn profile(frame: &mut Frame, app: &App, area: Rect) {
         " Hands counted: {}  (only hands you started with at least {} big blinds:",
         stats.hands, min_stack
     );
-    lines.push(Line::from(fit(&counted, inner_w)));
+    lines.push(Line::from(counted));
     lines.push(Line::from(Span::styled(
         "  with fewer, everybody has to play push-or-fold whatever their style)",
         dim(),
@@ -210,8 +208,14 @@ pub(super) fn profile(frame: &mut Frame, app: &App, area: Rect) {
     )];
     spans.extend(reminder(&[], Place::ProfileWindow));
     lines.push(Line::from(spans));
+    let (rect, lines) = fitted(area, 74, lines);
+    frame.render_widget(Clear, rect);
     frame.render_widget(
-        Paragraph::new(lines).block(window(" Your playing style ".to_string(), Color::Cyan)),
+        boxed(
+            lines,
+            window(" Your playing style ".to_string(), Color::Cyan),
+            rect,
+        ),
         rect,
     );
 }
@@ -227,9 +231,6 @@ pub(super) fn raise(frame: &mut Frame, v: &TableView, prompt: &RaisePrompt, area
     } else {
         "Raise to"
     };
-    let rect = centered(area, 60, 9);
-    frame.render_widget(Clear, rect);
-
     let error = match &prompt.error {
         Some(e) => Line::from(Span::styled(e.clone(), Style::new().fg(Color::LightRed))),
         None => Line::from(""),
@@ -266,8 +267,10 @@ pub(super) fn raise(frame: &mut Frame, v: &TableView, prompt: &RaisePrompt, area
                 .into_iter(),
         )),
     ];
+    let (rect, lines) = fitted(area, 60, lines);
+    frame.render_widget(Clear, rect);
     frame.render_widget(
-        Paragraph::new(lines).block(window(format!(" {word} "), Color::Yellow)),
+        boxed(lines, window(format!(" {word} "), Color::Yellow), rect),
         rect,
     );
 }
@@ -348,7 +351,10 @@ pub(super) fn help(frame: &mut Frame, app: &App, area: Rect) {
         key_for(Place::HelpWindow, Cmd::Left),
         key_for(Place::HelpWindow, Cmd::Close),
     );
-    let mut block = window(title, Color::Cyan);
+    let mut block = window(
+        fit(&title, rect.width.saturating_sub(2) as usize),
+        Color::Cyan,
+    );
     if max_scroll > 0 {
         let hint = if scroll < max_scroll {
             format!(" ↓ more below (line {} of {}) ", scroll + visible, total)
@@ -357,7 +363,7 @@ pub(super) fn help(frame: &mut Frame, app: &App, area: Rect) {
         };
         block = block.title_bottom(Line::from(hint).alignment(Alignment::Right));
     }
-    frame.render_widget(Paragraph::new(shown).block(block), rect);
+    frame.render_widget(boxed(shown, block, rect), rect);
 }
 
 #[cfg(test)]

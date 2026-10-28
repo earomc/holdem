@@ -1,6 +1,10 @@
 //! Measuring, cutting and wrapping text by its width on screen.
 
+use ratatui::style::Style;
+use ratatui::text::{Line, Span};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+
+use super::style::NO_BREAK;
 
 /// Display width of a string in terminal columns.
 pub(super) fn text_width(text: &str) -> usize {
@@ -94,6 +98,135 @@ pub(super) fn wrap_text(text: &str, width: usize, indent: usize) -> Vec<String> 
         .collect()
 }
 
+/// Word-wraps styled lines to at most `width` columns, keeping every span's
+/// style and each line's style and alignment. Lines that fit are kept as they
+/// are; continuation lines start with the line's own leading spaces. Words
+/// wider than a line are broken.
+pub(super) fn wrap_lines(lines: Vec<Line<'static>>, width: usize) -> Vec<Line<'static>> {
+    let width = width.max(1);
+    let mut out = Vec::with_capacity(lines.len());
+    for line in lines {
+        if line.width() <= width {
+            out.push(line);
+        } else {
+            out.extend(wrap_line(&line, width));
+        }
+    }
+    out
+}
+
+/// A word, or the space between two words: its pieces, each with its style.
+struct Chunk {
+    space: bool,
+    pieces: Vec<(String, Style)>,
+}
+
+impl Chunk {
+    fn width(&self) -> usize {
+        self.pieces.iter().map(|(t, _)| text_width(t)).sum()
+    }
+}
+
+/// Splits a line's spans into words and the spaces between them. A word may
+/// run over several spans (a coloured part next to a plain one), and a no-break
+/// space ([`NO_BREAK`]) belongs to the word.
+fn chunks(line: &Line<'static>) -> Vec<Chunk> {
+    let breaks = |c: char| c.is_whitespace() && c != NO_BREAK;
+    let mut chunks: Vec<Chunk> = Vec::new();
+    for span in &line.spans {
+        let mut rest = span.content.as_ref();
+        while let Some(first) = rest.chars().next() {
+            let space = breaks(first);
+            let end = rest
+                .find(|c: char| breaks(c) != space)
+                .unwrap_or(rest.len());
+            let (part, tail) = rest.split_at(end);
+            match chunks.last_mut() {
+                Some(c) if c.space == space => c.pieces.push((part.to_string(), span.style)),
+                _ => chunks.push(Chunk {
+                    space,
+                    pieces: vec![(part.to_string(), span.style)],
+                }),
+            }
+            rest = tail;
+        }
+    }
+    chunks
+}
+
+fn wrap_line(line: &Line<'static>, width: usize) -> Vec<Line<'static>> {
+    let chunks = chunks(line);
+    let lead = match chunks.first() {
+        Some(c) if c.space => c.width(),
+        _ => 0,
+    };
+    let indent = if lead * 2 >= width { 0 } else { lead };
+
+    let mut out: Vec<Line<'static>> = Vec::new();
+    let mut spans: Vec<Span<'static>> = Vec::new();
+    let mut used = 0;
+    // Nothing but the indent on the current line yet.
+    let mut fresh = true;
+    let finish = |spans: &mut Vec<Span<'static>>, out: &mut Vec<Line<'static>>| {
+        let mut l = Line::from(std::mem::take(spans)).style(line.style);
+        l.alignment = line.alignment;
+        out.push(l);
+    };
+    let next_line = |spans: &mut Vec<Span<'static>>,
+                     out: &mut Vec<Line<'static>>,
+                     used: &mut usize,
+                     fresh: &mut bool| {
+        finish(spans, out);
+        if indent > 0 {
+            spans.push(Span::raw(" ".repeat(indent)));
+        }
+        *used = indent;
+        *fresh = true;
+    };
+
+    for chunk in chunks {
+        let w = chunk.width();
+        if chunk.space {
+            // Spaces at the start of a continuation line, or that do not fit, go.
+            if fresh && !out.is_empty() {
+                continue;
+            }
+            if used + w <= width {
+                spans.extend(chunk.pieces.into_iter().map(|(t, s)| Span::styled(t, s)));
+                used += w;
+            } else {
+                next_line(&mut spans, &mut out, &mut used, &mut fresh);
+            }
+            continue;
+        }
+        if used + w > width && !fresh {
+            next_line(&mut spans, &mut out, &mut used, &mut fresh);
+        }
+        if used + w <= width {
+            spans.extend(chunk.pieces.into_iter().map(|(t, s)| Span::styled(t, s)));
+            used += w;
+            fresh = false;
+            continue;
+        }
+        // A word wider than a whole line: break it.
+        for (text, style) in chunk.pieces {
+            let mut rest = text;
+            while !rest.is_empty() {
+                if used >= width {
+                    next_line(&mut spans, &mut out, &mut used, &mut fresh);
+                }
+                let (head, tail) = split_at_width(&rest, width - used);
+                used += text_width(&head);
+                spans.push(Span::styled(head, style));
+                fresh = false;
+                rest = tail;
+            }
+        }
+    }
+    finish(&mut spans, &mut out);
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -119,6 +252,67 @@ mod tests {
                 assert_eq!(joined.join(" ").replace(' ', ""), t.replace(' ', ""));
             }
         }
+    }
+
+    /// The text of some lines, joined, without spaces.
+    fn letters(lines: &[Line<'static>]) -> String {
+        lines
+            .iter()
+            .flat_map(|l| l.spans.iter())
+            .map(|s| s.content.replace(' ', ""))
+            .collect()
+    }
+
+    #[test]
+    fn styled_lines_wrap_within_the_width_and_keep_their_styles() {
+        use ratatui::style::Color;
+        let yellow = Style::new().fg(Color::Yellow);
+        let line = Line::from(vec![
+            Span::raw("  "),
+            Span::styled("[F]", yellow),
+            Span::raw(" Fold   "),
+            Span::styled("[C]", yellow),
+            Span::raw(" Call 170   "),
+            Span::styled("[R]", yellow),
+            Span::raw(" Raise to (min 340)   "),
+            Span::styled("[A]", yellow),
+            Span::raw(" All-in 1,390"),
+        ]);
+        for width in [8usize, 12, 20, 30, 50] {
+            let wrapped = wrap_lines(vec![line.clone()], width);
+            for l in &wrapped {
+                assert!(l.width() <= width, "{l:?} is wider than {width}");
+            }
+            assert_eq!(letters(&wrapped), letters(std::slice::from_ref(&line)));
+            // Every key keeps its colour.
+            let keys = wrapped
+                .iter()
+                .flat_map(|l| l.spans.iter())
+                .filter(|s| s.content.starts_with('['))
+                .count();
+            assert_eq!(keys, 4, "at width {width}");
+            assert!(
+                wrapped
+                    .iter()
+                    .flat_map(|l| l.spans.iter())
+                    .filter(|s| s.content.starts_with('['))
+                    .all(|s| s.style == yellow)
+            );
+        }
+        // Continuation lines keep the indent.
+        let wrapped = wrap_lines(vec![line.clone()], 30);
+        assert!(wrapped.len() > 1);
+        assert!(wrapped[1].spans[0].content.starts_with("  "));
+    }
+
+    #[test]
+    fn lines_that_fit_stay_as_they_are() {
+        let line = Line::from(vec![Span::raw(" ▶ "), Span::raw("Seats      6")]);
+        assert_eq!(wrap_lines(vec![line.clone()], 40), vec![line]);
+        let long = Line::from("x".repeat(25));
+        let broken = wrap_lines(vec![long], 10);
+        assert_eq!(broken.len(), 3, "a word wider than the line is broken");
+        assert!(broken.iter().all(|l| l.width() <= 10));
     }
 
     #[test]

@@ -4,13 +4,13 @@ use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Paragraph, Wrap};
 
 use holdem::game::{State, chips_text};
 use holdem::protocol::TableView;
 
 use super::seats::seat_title;
 use crate::app::App;
+use crate::ui::boxed;
 use crate::ui::cards::cards_line;
 use crate::ui::style::{bold, dim, framed};
 
@@ -26,10 +26,7 @@ pub(super) fn draw_you(frame: &mut Frame, app: &App, v: &TableView, area: Rect) 
             "You are watching. You will play again in the next game."
         };
         let block = framed(Line::from(" You "), Color::DarkGray);
-        frame.render_widget(
-            Paragraph::new(text).wrap(Wrap { trim: true }).block(block),
-            area,
-        );
+        frame.render_widget(boxed(vec![Line::from(text)], block, area), area);
         return;
     };
     let s = &v.seats[me];
@@ -98,5 +95,5 @@ pub(super) fn draw_you(frame: &mut Frame, app: &App, v: &TableView, area: Rect) 
             lines.push(Line::from(parts));
         }
     }
-    frame.render_widget(Paragraph::new(lines).block(block), area);
+    frame.render_widget(boxed(lines, block, area), area);
 }

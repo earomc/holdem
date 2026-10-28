@@ -4,13 +4,12 @@ use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
 
 use holdem::game::{MAX_PLAYERS, MIN_PLAYERS, chips_text};
 
 use super::style::{centered, dim, key_for, reminder, reminder_spans, yellow};
-use super::text::{fit, wrap_text};
-use super::title_block;
+use super::text::wrap_text;
+use super::{boxed, screen_box, title_block};
 use crate::app::{App, SetupRow};
 use crate::keys::{self, Cmd, Place};
 
@@ -164,30 +163,22 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
         } else {
             Style::new()
         };
-        lines.push(Line::from(Span::styled(fit(&text, inner_w), style)));
+        lines.push(Line::from(Span::styled(text, style)));
     }
     lines.push(Line::from(""));
     let (_, _, about) = setup_row_text(app, rows[selected]);
-    for l in wrap_text(&about, inner_w.saturating_sub(2), 0)
-        .into_iter()
-        .take(2)
-    {
+    for l in wrap_text(&about, inner_w.saturating_sub(2), 0) {
         lines.push(Line::from(Span::styled(
             format!(" {l}"),
             Style::new().fg(Color::Cyan),
         )));
     }
-    while lines.len() < (height as usize).saturating_sub(5) {
-        lines.push(Line::from(""));
-    }
+    let body = std::mem::take(&mut lines);
     if host {
         lines.push(Line::from(Span::styled(
-            fit(
-                &format!(
-                    " Hosting as \"{}\" on port {} (change both in holdem.toml).",
-                    app.config.server.name, app.config.server.port
-                ),
-                inner_w,
+            format!(
+                " Hosting as \"{}\" on port {} (change both in holdem.toml).",
+                app.config.server.name, app.config.server.port
             ),
             dim(),
         )));
@@ -219,5 +210,6 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
     } else {
         "New game against bots"
     };
-    frame.render_widget(Paragraph::new(lines).block(title_block(title)), rect);
+    let (rect, lines) = screen_box(area, 72, height, body, lines);
+    frame.render_widget(boxed(lines, title_block(title, rect), rect), rect);
 }
