@@ -31,7 +31,9 @@ called `holdem`:
 
 The installers put the program in `~/.cargo/bin`. The archives on the
 [releases page](https://github.com/earomc/holdem/releases) contain just the program, to run
-from anywhere.
+from anywhere. Every archive is attested by GitHub: with the [GitHub CLI](https://cli.github.com),
+`gh attestation verify <archive> --repo earomc/holdem` checks that it was built by this
+repository's release workflow and not changed since.
 
 ### With sound (`holdem`), for playing
 

@@ -15,7 +15,8 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/earomc/holdem/releases/
 
 The installer puts `holdem` in `~/.cargo/bin`. You can also download an archive from the
 [releases page](https://github.com/earomc/holdem/releases) and put the program anywhere.
-`holdem --version` says `(without sound)` for this build.
+`holdem --version` says `(without sound)` for this build. To check a downloaded archive, run
+`gh attestation verify <archive> --repo earomc/holdem` (with the [GitHub CLI](https://cli.github.com)).
 
 ## Starting the table
 

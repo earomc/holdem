@@ -15,6 +15,8 @@ All notable changes to holdem. The format follows
 - `holdem serve` prints what happens at the table, with the time: people joining, leaving and
   coming back, games starting and ending, programs turned away for their version.
 - [Running a server](docs/server.md): installing, the network, the log, a systemd service.
+- Release archives are attested by GitHub: `gh attestation verify <archive> --repo earomc/holdem`
+  shows that a download was built by this repository's release workflow.
 
 ### Changed
 - `holdem config write --force` keeps the values of the file it replaces.

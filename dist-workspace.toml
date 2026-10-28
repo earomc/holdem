@@ -13,6 +13,9 @@ installers = ["shell", "powershell"]
 targets = ["aarch64-apple-darwin", "aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
 # Path that installers should place binaries in
 install-path = "CARGO_HOME"
+# Attest every artifact on GitHub: `gh attestation verify FILE --repo earomc/holdem`
+# proves it was built by this repository's release workflow
+github-attestations = true
 # Whether to install an updater program
 install-updater = false
 # Build each package on its own, so holdem-server never gets holdem's sound feature
