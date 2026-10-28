@@ -6,6 +6,16 @@ All notable changes to holdem. The format follows
 
 ## [Unreleased]
 
+### Added
+- Save your settings from the game: `W` on the setup screen or in the settings window writes
+  your name, speed, volume, win-chance hint and table options to `holdem.toml`. Only those
+  settings change; comments and the rest of the file stay.
+- holdem also looks for `holdem.toml` in your own settings folder (`%APPDATA%\holdem`,
+  `~/Library/Application Support/holdem` or `~/.config/holdem`); saving creates it there.
+
+### Changed
+- `holdem config write --force` keeps the values of the file it replaces.
+
 ## [0.6.1] - 2026-10-28
 
 ### Added

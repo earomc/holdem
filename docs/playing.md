@@ -45,11 +45,11 @@ Every key is also listed on the first page of the in-game help (`?`).
 | Where | Keys |
 | --- | --- |
 | Main menu | `↑` `↓` choose, `Enter` select, `?`/`H`/`F1` help, `Q`/`Esc` quit |
-| Setup | `↑` `↓` choose, `←` `→` change, type on the *Your name* row, `Enter` deal / open the table, `Esc`/`Q` back (on the name row only `Esc`, and `F1` for help) |
+| Setup | `↑` `↓` choose, `←` `→` change, type on the *Your name* row, `W` save as your defaults, `Enter` deal / open the table, `Esc`/`Q` back (on the name row, letters are typed: use `Esc`, and `F1` for help) |
 | Join screen | `↑` `↓`/`Tab` move between name, address and found tables, type to edit, `Enter` join, `Esc` back or cancel, `F1` help |
 | Lobby | `Enter` ready / not ready, `S` settings, `?`/`H` help, `Q`/`Esc` leave |
 | Your turn | `F` fold, `C` check/call, `R`/`B` raise box, `A` all-in (press twice) |
-| At the table | `Enter`/`N` next hand (ready), `Y` rebuy when offered, `L` log, `P` your style, `S` settings (speed, volume, win-chance hint), `?`/`H` help, `Q`/`Esc` leave |
+| At the table | `Enter`/`N` next hand (ready), `Y` rebuy when offered, `L` log, `P` your style, `S` settings (speed, volume, win-chance hint; `W` saves them), `?`/`H` help, `Q`/`Esc` leave |
 | Raise box | digits and `Backspace` type the total, `M` min, `H` half pot, `P` pot, `A` all-in, `↑` `↓` ± one big blind, `Enter` confirm, `Esc` cancel |
 | Final standings | `Enter` main menu (solo) or play again (network), `P` your style, `L` log, `?`/`H` help, `Q`/`Esc` leave |
 | Anywhere | `Ctrl-C` quits immediately |

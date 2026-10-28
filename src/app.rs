@@ -3,13 +3,14 @@
 
 use std::cell::Cell;
 use std::io;
+use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver};
 use std::thread;
 use std::time::{Duration, Instant};
 
 use holdem::bot;
 use holdem::card::Rng;
-use holdem::config::{Config, SpeedConfig};
+use holdem::config::{self, Config, SpeedConfig};
 use holdem::game::{Action, GameEvent, MAX_PLAYERS, MIN_PLAYERS, Rules, State, Street, chips_text};
 use holdem::net::{self, Connection, Found, Server};
 use holdem::protocol::{ClientMsg, MAX_NAME, TableView};
@@ -178,6 +179,9 @@ pub struct App {
     pub config: Config,
     /// Which settings file is in use, for the main menu.
     pub config_note: String,
+    /// The settings file that was loaded, which saving updates. `None` means
+    /// the defaults: saving then creates the file in your settings folder.
+    pub config_path: Option<PathBuf>,
     /// Index into `MenuItem::ALL`.
     pub menu_row: usize,
     pub setup: Setup,
@@ -310,6 +314,7 @@ impl App {
             show_odds: config.client.win_chance_hint,
             config,
             config_note: String::new(),
+            config_path: None,
             menu_row: 0,
             setup,
             join,
@@ -440,6 +445,62 @@ impl App {
         self.sound.set_volume(v as u8);
         // A sample at the new level, so the change can be heard.
         self.sound.play(Cue::Bet, 0);
+    }
+
+    /// The settings as they are now: the loaded ones with everything the
+    /// setup screen and the settings window changed.
+    pub fn settings_as_config(&self) -> Config {
+        let mut c = self.config.clone();
+        let client = &mut c.client;
+        // An unchanged name stays as it was, so an empty one keeps meaning the
+        // computer's login name.
+        if self.join.name.trim() != client.resolved_name() {
+            client.name = self.join.name.trim().to_string();
+        }
+        if !self.speed().name.eq_ignore_ascii_case(&client.speed) {
+            client.speed = self.speed().name.clone();
+        }
+        client.win_chance_hint = self.show_odds;
+        client.sound.volume = self.sound.volume();
+        let s = &self.setup;
+        let game = &mut c.game;
+        game.seats = s.seats;
+        game.fill_with_bots = s.fill_with_bots;
+        game.allow_win_chance = s.allow_win_chance;
+        game.fluctuation.enabled = s.fluctuation;
+        game.rules = s.rules.clone();
+        c
+    }
+
+    /// Saves the current settings to the settings file (see [`config::save`]).
+    fn save_settings(&mut self) {
+        let Some(path) = self.config_path.clone().or_else(config::user_file) else {
+            self.notify("There is no settings folder to save in: start holdem with --config FILE.");
+            return;
+        };
+        let wanted = self.settings_as_config();
+        match config::save(&path, &wanted) {
+            Ok(report) if report.changed.is_empty() => {
+                if path.exists() {
+                    self.notify(format!("Already saved in {}", path.display()));
+                } else {
+                    self.notify("Nothing to save: every setting is at its default.");
+                }
+            }
+            Ok(report) => {
+                let n = report.changed.len();
+                self.notify(format!(
+                    "Saved {} setting{} to {}",
+                    n,
+                    if n == 1 { "" } else { "s" },
+                    path.display()
+                ));
+                self.config = wanted;
+                self.config_note = format!("Settings: {}", path.display());
+                self.config_path = Some(path);
+            }
+            Err(e) => self.notify(format!("Could not save the settings: {e}")),
+        }
     }
 
     fn change_speed(&mut self, delta: i32) {
@@ -854,6 +915,7 @@ impl App {
             Some(Cmd::Left) => self.change_setting(-1),
             Some(Cmd::Right) => self.change_setting(1),
             Some(Cmd::Close) => self.show_settings = false,
+            Some(Cmd::Save) => self.save_settings(),
             _ => {}
         }
     }
@@ -939,6 +1001,7 @@ impl App {
                 self.setup.row = 0;
             }
             Some(Cmd::Select) => self.start_game(),
+            Some(Cmd::Save) => self.save_settings(),
             Some(Cmd::Back) => self.screen = Screen::Menu,
             Some(cmd) => self.common(cmd),
             None => {}
@@ -1295,6 +1358,34 @@ mod tests {
         press(&mut app, KeyCode::Char('q'));
         assert_eq!(app.screen, Screen::Menu, "Q goes back on the other rows");
         assert_eq!(app.join.name, "Ann", "the join screen uses the same name");
+    }
+
+    #[test]
+    fn w_saves_the_settings_and_a_second_w_has_nothing_to_do() {
+        let dir = std::env::temp_dir().join(format!("holdem-app-save-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let path = dir.join("holdem.toml");
+        let mut app = App::new(Config::default(), Some(1), Sound::new(true));
+        app.config_path = Some(path.clone());
+        let press = |app: &mut App, code| app.on_key(KeyEvent::new(code, KeyModifiers::NONE));
+
+        press(&mut app, KeyCode::Enter); // Play against bots, on the Seats row
+        press(&mut app, KeyCode::Left);
+        press(&mut app, KeyCode::Char('w'));
+        assert!(
+            app.toast_text()
+                .is_some_and(|t| t.starts_with("Saved 1 setting to"))
+        );
+        let saved = Config::read(&path).unwrap();
+        assert_eq!(saved.game.seats, Config::default().game.seats - 1);
+        assert_eq!(saved.client.name, "", "the login name is not written down");
+
+        press(&mut app, KeyCode::Char('w'));
+        assert!(
+            app.toast_text()
+                .is_some_and(|t| t.starts_with("Already saved"))
+        );
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

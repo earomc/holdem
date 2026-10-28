@@ -596,8 +596,10 @@ fn draw_setup(frame: &mut Frame, app: &App, area: Rect) {
         if host { "open the table" } else { "deal" },
     );
     if rows[selected] == SetupRow::Name {
-        // Letters are typed here: no ←→, and only F1 opens the help.
-        let entries = keys::reminder_where(Place::Setup, |c| !matches!(c, Cmd::Left | Cmd::Help));
+        // Letters are typed here: no ←→ and no W, and only F1 opens the help.
+        let entries = keys::reminder_where(Place::Setup, |c| {
+            !matches!(c, Cmd::Left | Cmd::Help | Cmd::Save)
+        });
         lines.push(Line::from(reminder_spans(
             std::iter::once(start)
                 .chain(entries)

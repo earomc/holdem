@@ -40,6 +40,8 @@ rodio = { version = "0.23", default-features = false, features = ["playback"], o
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 toml = { version = "1.1.8", features = ["preserve_order"] }
+# Saving edits the settings file in place, keeping comments and layout.
+toml_edit = "0.25"
 
 # The Linux release builds link ALSA for the sound feature.
 [package.metadata.dist.dependencies.apt]

@@ -1,9 +1,11 @@
 //! The optional configuration file, `holdem.toml`.
 //!
-//! It is looked for in the current folder, then next to the program; a path
-//! can also be given with `--config`. Every setting has a default, so the file
-//! may contain only what you want to change. `holdem config write` writes a
-//! commented file with all the defaults ([`template`]).
+//! It is looked for in the current folder, next to the program, then in your
+//! own settings folder ([`user_file`]); a path can also be given with
+//! `--config`. Every setting has a default, so the file may contain only what
+//! you want to change. `holdem config write` writes a commented file with all
+//! the defaults ([`template`]), and the game saves the settings you change in it
+//! when you ask it to ([`save()`]).
 //!
 //! The file has three parts, by who reads them:
 //!
@@ -28,7 +30,31 @@ use crate::protocol::DEFAULT_PORT;
 use crate::stats::{MIN_HANDS, MIN_STACK_BB};
 use crate::table::{Fluctuation, TableSettings};
 
+mod save;
+
+pub use save::{SAVED_KEYS, SaveReport, save};
+
 pub const FILE_NAME: &str = "holdem.toml";
+
+/// `holdem.toml` in your own settings folder: `%APPDATA%\holdem` on Windows,
+/// `~/Library/Application Support/holdem` on macOS, and
+/// `$XDG_CONFIG_HOME/holdem` or `~/.config/holdem` elsewhere. `None` if the
+/// environment names no such folder.
+pub fn user_file() -> Option<PathBuf> {
+    let var = |name: &str| {
+        std::env::var_os(name)
+            .map(PathBuf::from)
+            .filter(|p| p.is_absolute())
+    };
+    let dir = if cfg!(windows) {
+        var("APPDATA")?
+    } else if cfg!(target_os = "macos") {
+        var("HOME")?.join("Library").join("Application Support")
+    } else {
+        var("XDG_CONFIG_HOME").or_else(|| var("HOME").map(|h| h.join(".config")))?
+    };
+    Some(dir.join("holdem").join(FILE_NAME))
+}
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -928,8 +954,9 @@ impl Config {
     }
 
     /// The settings file holdem uses: `path` if given (it must then exist),
-    /// otherwise the first of `holdem.toml` in the current folder and
-    /// `holdem.toml` next to the program that exists. `None` means the defaults.
+    /// otherwise the first that exists of `holdem.toml` in the current folder,
+    /// next to the program, and in your settings folder ([`user_file`]).
+    /// `None` means the defaults.
     pub fn locate(path: Option<&Path>) -> Option<PathBuf> {
         if let Some(p) = path {
             return Some(p.to_path_buf());
@@ -940,6 +967,7 @@ impl Config {
         {
             candidates.push(dir.join(FILE_NAME));
         }
+        candidates.extend(user_file());
         candidates.into_iter().find(|c| c.is_file())
     }
 

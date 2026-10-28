@@ -42,6 +42,7 @@ pub enum Cmd {
     Select,
     Back,
     Erase,
+    Save,
     Close,
     Help,
     Log,
@@ -159,6 +160,11 @@ pub const SECTIONS: &[Section] = &[
                 &[(&[Enter], Cmd::Select)],
                 "deal (or open your table to others when hosting)",
                 "",
+            ),
+            row(
+                &[(&[Char('w')], Cmd::Save)],
+                "save your name, settings and these table options as your defaults",
+                "save",
             ),
             row(
                 &[(&[Esc, Char('q')], Cmd::Back)],
@@ -370,6 +376,11 @@ pub const SECTIONS: &[Section] = &[
         rows: &[
             row(UP_DOWN, "choose", "choose"),
             row(LEFT_RIGHT, "change", "change"),
+            row(
+                &[(&[Char('w')], Cmd::Save)],
+                "save your settings as your defaults",
+                "save",
+            ),
             row(&[(&[Esc, Enter, Char('s')], Cmd::Close)], "close", "close"),
         ],
     },

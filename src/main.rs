@@ -61,7 +61,7 @@ fn cli() -> Command {
                 .value_name("FILE")
                 .value_parser(PathBufValueParser::new())
                 .global(true)
-                .help("Settings file to use [default: holdem.toml in the current folder or next to the program]"),
+                .help("Settings file to use [default: holdem.toml in the current folder, next to the program, or in your settings folder]"),
         )
         .arg(
             Arg::new("seed")
@@ -126,7 +126,7 @@ fn cli() -> Command {
                                 .long("force")
                                 .short('f')
                                 .action(ArgAction::SetTrue)
-                                .help("Replace the file if it exists"),
+                                .help("Replace the file if it exists, keeping its values"),
                         ),
                 )
                 .subcommand(
@@ -463,7 +463,19 @@ fn run_config(action: &ConfigAction, chosen: Option<&Path>) -> Result<(), String
                     path.display()
                 ));
             }
-            std::fs::write(path, config::template())
+            // Replacing a file keeps its values, now with every setting explained.
+            let text = if path.exists() {
+                match Config::read(path) {
+                    Ok(current) => config::render(&current),
+                    Err(e) => {
+                        eprintln!("Could not read the old file ({}); writing the defaults.", e);
+                        config::template()
+                    }
+                }
+            } else {
+                config::template()
+            };
+            std::fs::write(path, text)
                 .map_err(|e| format!("could not write {}: {}", path.display(), e))?;
             println!("Wrote {}", absolute(path.to_path_buf()).display());
         }
@@ -532,6 +544,7 @@ fn main() {
     let sound = Sound::new(options.mute);
     let mut app = App::new(config, options.seed, sound);
     app.config_note = format!("Settings: {}", source_text(source.as_deref()));
+    app.config_path = source;
     let mut terminal = ratatui::init();
     let result = run(&mut terminal, &mut app);
     ratatui::restore();
@@ -550,6 +563,36 @@ mod tests {
         cli()
             .try_get_matches_from(all)
             .map(|m| Options::from_matches(&m))
+    }
+
+    #[test]
+    fn config_write_force_keeps_the_values() {
+        let dir = std::env::temp_dir().join(format!("holdem-write-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("holdem.toml");
+        std::fs::write(
+            &path,
+            "[game]
+seats = 4
+",
+        )
+        .unwrap();
+        let write = |force| {
+            run_config(
+                &ConfigAction::Write {
+                    file: Some(path.clone()),
+                    force,
+                },
+                None,
+            )
+        };
+        assert!(write(false).is_err(), "an existing file needs --force");
+        write(true).unwrap();
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(text.contains("seats = 4"), "the value is kept");
+        assert!(text.contains("# Default: 6"), "and explained");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

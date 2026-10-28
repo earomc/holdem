@@ -4,18 +4,36 @@ The settings file `holdem.toml` and the command line. Back to the [README](../RE
 
 ## Settings file
 
-`holdem.toml` is read from the current folder, from next to the program, or from the file given
-with `--config`. Every line is optional: missing settings keep their defaults.
+`holdem.toml` is read from the file given with `--config`, or else from the first of these
+that exists:
+
+1. the current folder;
+2. the folder of the program;
+3. your own settings folder: `%APPDATA%\holdem` on Windows,
+   `~/Library/Application Support/holdem` on macOS, `$XDG_CONFIG_HOME/holdem` or
+   `~/.config/holdem` on Linux.
+
+Every line is optional: missing settings keep their defaults.
 `holdem config write` writes a file with every setting. Every setting is explained; for the
 on/off ones the comment says what `true` and what `false` does, and each ends with its default
 spelled out. The file is generated from the program's own defaults, so it cannot disagree
 with them.
 
-holdem does not write a settings file by itself. A file written automatically would freeze
-today's defaults: settings you never touched would no longer improve with a newer holdem, and
-the program would leave files in whatever folder it was started from (or fail where it may
-not write, as on a server). Writing one is a deliberate step, and the file can be trimmed to
-just the settings you change.
+### Saving from the game
+
+Press `W` on the setup screen or in the settings window (`S`) to save what you changed as
+your defaults: your name, the speed, the volume, the win-chance hint and the setup screen's
+table options. holdem updates the file it loaded, or creates `holdem.toml` in your settings
+folder if there was none, and says where it saved.
+
+Saving changes only those settings, in place: your comments and the rest of the file stay as
+they are. A setting that is not in the file yet is only added when it differs from its
+default. That matters, because a value written down is frozen: settings you never touched
+would no longer improve with a newer holdem.
+
+Otherwise holdem does not write a settings file by itself, only when you press `W` or run
+`holdem config write`. `holdem config write --force` replaces an existing file with the fully
+explained format and keeps its values.
 
 `holdem config show` prints the settings in effect and which file they came from, and
 `holdem config check [FILE]` checks a file without starting anything and lists the settings
