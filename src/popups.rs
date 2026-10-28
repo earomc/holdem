@@ -40,7 +40,7 @@ pub fn leave(frame: &mut Frame, app: &App, selected: usize, area: Rect) {
         Some(_) => "This game ends.",
         None => "",
     };
-    let mut lines = vec![Line::from(Span::styled(format!(" {}", warning), dim()))];
+    let mut lines = vec![Line::from(Span::styled(format!(" {warning}"), dim()))];
     lines.push(Line::from(""));
     for (i, option) in LeaveChoice::ALL.iter().enumerate() {
         let style = if i == selected {
@@ -79,9 +79,9 @@ pub fn settings(frame: &mut Frame, app: &App, area: Rect) {
             SettingsRow::WinChance => if app.show_odds { "On" } else { "Off" }.to_string(),
         };
         let text = if i == app.settings_row {
-            format!(" ▶ {:<17}◀ {} ▶", label, value)
+            format!(" ▶ {label:<17}◀ {value} ▶")
         } else {
-            format!("   {:<17}  {}", label, value)
+            format!("   {label:<17}  {value}")
         };
         let style = if i == app.settings_row {
             yellow()
@@ -124,9 +124,9 @@ pub fn log(frame: &mut Frame, app: &App, area: Rect) {
     let scroll = app.log_scroll.min(max);
     let keys = keys::reminder_text(Place::LogWindow);
     let title = if scroll > 0 {
-        format!(" Hand log, {} lines up  ({}) ", scroll, keys)
+        format!(" Hand log, {scroll} lines up  ({keys}) ")
     } else {
-        format!(" Hand log  ({}) ", keys)
+        format!(" Hand log  ({keys}) ")
     };
     frame.render_widget(
         Paragraph::new(lines).block(window(fit(&title, inner_w), Color::Cyan)),
@@ -162,15 +162,14 @@ pub fn profile(frame: &mut Frame, app: &App, area: Rect) {
     match stats::profile(&stats, min_hands) {
         None => {
             lines.push(Line::from(format!(
-                " Play at least {} counted hands for an estimate.",
-                min_hands
+                " Play at least {min_hands} counted hands for an estimate."
             )));
         }
         Some(p) => {
             let x = p.features;
             let row = |label: &str, value: f32, about: &str| {
                 Line::from(vec![
-                    Span::raw(format!(" {:<12}", label)),
+                    Span::raw(format!(" {label:<12}")),
                     Span::styled(bar(value, 16), cyan()),
                     Span::raw(format!(" {:>3.0}%  ", value * 100.0)),
                     Span::styled(about.to_string(), dim()),
@@ -197,9 +196,9 @@ pub fn profile(frame: &mut Frame, app: &App, area: Rect) {
             lines.push(Line::from(" Closest bot styles:"));
             for (name, score) in p.ranking.iter().take(3) {
                 lines.push(Line::from(vec![
-                    Span::raw(format!("   {:<18}", name)),
+                    Span::raw(format!("   {name:<18}")),
                     Span::styled(bar(*score as f32 / 100.0, 20), yellow()),
-                    Span::raw(format!(" {}% match", score)),
+                    Span::raw(format!(" {score}% match")),
                 ]));
             }
         }
@@ -238,7 +237,7 @@ pub fn raise(frame: &mut Frame, v: &TableView, prompt: &RaisePrompt, area: Rect)
     };
     let lines = vec![
         Line::from(vec![
-            Span::raw(format!("{}: ", word)),
+            Span::raw(format!("{word}: ")),
             Span::styled(format!("{}▏", prompt.text), yellow()),
         ]),
         Line::from(Span::styled(
@@ -269,7 +268,7 @@ pub fn raise(frame: &mut Frame, v: &TableView, prompt: &RaisePrompt, area: Rect)
         )),
     ];
     frame.render_widget(
-        Paragraph::new(lines).block(window(format!(" {} ", word), Color::Yellow)),
+        Paragraph::new(lines).block(window(format!(" {word} "), Color::Yellow)),
         rect,
     );
 }
@@ -292,7 +291,7 @@ fn help_lines(items: &[Item], width: usize) -> Vec<Line<'static>> {
             }
             Item::Text(text) => {
                 for piece in wrap_text(text, width.saturating_sub(1), 0) {
-                    out.push(Line::from(format!(" {}", piece)));
+                    out.push(Line::from(format!(" {piece}")));
                 }
             }
             Item::Pair(label, desc) => {
@@ -300,9 +299,9 @@ fn help_lines(items: &[Item], width: usize) -> Vec<Line<'static>> {
                 let label_w = text_width(label);
                 let pad = " ".repeat(LABEL_COL);
                 if label_w + 3 > LABEL_COL {
-                    out.push(Line::from(Span::styled(format!("  {}", label), cyan())));
+                    out.push(Line::from(Span::styled(format!("  {label}"), cyan())));
                     for piece in pieces {
-                        out.push(Line::from(format!("{}{}", pad, piece)));
+                        out.push(Line::from(format!("{pad}{piece}")));
                     }
                 } else {
                     let label_text = format!("  {}{}", label, " ".repeat(LABEL_COL - 2 - label_w));
@@ -313,7 +312,7 @@ fn help_lines(items: &[Item], width: usize) -> Vec<Line<'static>> {
                                 Span::raw(piece),
                             ]));
                         } else {
-                            out.push(Line::from(format!("{}{}", pad, piece)));
+                            out.push(Line::from(format!("{pad}{piece}")));
                         }
                     }
                 }

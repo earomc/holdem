@@ -358,7 +358,8 @@ impl App {
     pub fn toast_text(&self) -> Option<&str> {
         match &self.toast {
             Some((text, at))
-                if at.elapsed() < Duration::from_millis(self.config.client.message_ms as u64) =>
+                if at.elapsed()
+                    < Duration::from_millis(u64::from(self.config.client.message_ms)) =>
             {
                 Some(text.as_str())
             }
@@ -440,8 +441,8 @@ impl App {
         if self.sound.unavailable().is_some() {
             return;
         }
-        let step = self.config.client.sound.volume_step as i32;
-        let v = (self.sound.volume() as i32 + delta * step).clamp(0, 100);
+        let step = i32::from(self.config.client.sound.volume_step);
+        let v = (i32::from(self.sound.volume()) + delta * step).clamp(0, 100);
         self.sound.set_volume(v as u8);
         // A sample at the new level, so the change can be heard.
         self.sound.play(Cue::Bet, 0);
@@ -585,7 +586,7 @@ impl App {
             return;
         }
         let port = self.config.server.port;
-        let timeout = Duration::from_secs(self.config.client.join.connect_seconds as u64);
+        let timeout = Duration::from_secs(u64::from(self.config.client.join.connect_seconds));
         let (tx, rx) = mpsc::channel();
         thread::spawn(move || {
             let _ = tx.send(net::connect(&address, port, timeout));
@@ -731,7 +732,7 @@ impl App {
         }
         for (k, c) in cues.into_iter().enumerate() {
             self.sound
-                .play(c, k as u64 * self.config.client.sound.gap_ms as u64);
+                .play(c, k as u64 * u64::from(self.config.client.sound.gap_ms));
         }
     }
 
@@ -756,7 +757,7 @@ impl App {
                 ));
                 self.screen = Screen::Lobby;
             }
-            Err(e) => self.join.status = format!("Could not connect: {}", e),
+            Err(e) => self.join.status = format!("Could not connect: {e}"),
         }
     }
 
@@ -776,11 +777,11 @@ impl App {
             }
         }
         let due = self.last_discovery.is_none_or(|t| {
-            t.elapsed() >= Duration::from_secs(self.config.client.join.discovery_seconds as u64)
+            t.elapsed() >= Duration::from_secs(u64::from(self.config.client.join.discovery_seconds))
         });
         if self.discovery.is_none() && due {
             let port = self.config.server.port;
-            let wait = Duration::from_millis(self.config.client.join.discovery_wait_ms as u64);
+            let wait = Duration::from_millis(u64::from(self.config.client.join.discovery_wait_ms));
             let (tx, rx) = mpsc::channel();
             thread::spawn(move || {
                 let _ = tx.send(net::discover(port, wait));

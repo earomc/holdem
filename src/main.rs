@@ -243,7 +243,7 @@ fn server_report(
         out.push_str(title);
         out.push('\n');
         for (label, value) in rows {
-            out.push_str(&format!("  {:<22}{}\n", label, value));
+            out.push_str(&format!("  {label:<22}{value}\n"));
         }
     };
     let source = source_text(source);
@@ -254,8 +254,8 @@ fn server_report(
     section("Configuration", origin);
 
     let lan = match net::local_ip() {
-        Some(ip) => format!("{}:{}", ip, port),
-        None => format!("this computer's address, port {}", port),
+        Some(ip) => format!("{ip}:{port}"),
+        None => format!("this computer's address, port {port}"),
     };
     let fluctuation = match &settings.fluctuation {
         Some(f) => format!(
@@ -269,7 +269,7 @@ fn server_report(
         "Table",
         vec![
             ("name", format!("\"{}\"", settings.name)),
-            ("port", format!("{} (on this network: {})", port, lan)),
+            ("port", format!("{port} (on this network: {lan})")),
             ("seats", settings.seats.to_string()),
             (
                 "free seats",
@@ -307,7 +307,7 @@ fn server_report(
         ],
     );
 
-    let schedule: Vec<String> = r.blind_schedule.iter().map(|p| format!("{}%", p)).collect();
+    let schedule: Vec<String> = r.blind_schedule.iter().map(|p| format!("{p}%")).collect();
     section(
         "Rules",
         vec![
@@ -337,7 +337,7 @@ fn server_report(
         if s == 0 {
             none.to_string()
         } else {
-            format!("{} s", s)
+            format!("{s} s")
         }
     };
     section(
@@ -355,8 +355,7 @@ fn server_report(
             (
                 "protocol",
                 format!(
-                    "holdem {} ({}), protocol versions {} to {}",
-                    APP_VERSION, BUILD, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION
+                    "holdem {APP_VERSION} ({BUILD}), protocol versions {MIN_PROTOCOL_VERSION} to {PROTOCOL_VERSION}"
                 ),
             ),
         ],
@@ -376,7 +375,7 @@ fn run_server(
     let mut speed = config.speed(&config.server.speed);
     if let Some(name) = &options.name {
         settings.name = name.clone();
-        overrides.push(format!("--name \"{}\"", name));
+        overrides.push(format!("--name \"{name}\""));
     }
     if let Some(wanted) = &options.speed {
         let Some(i) = config.speed_index(wanted) else {
@@ -393,26 +392,25 @@ fn run_server(
     }
     let port = match options.port {
         Some(p) => {
-            overrides.push(format!("--port {}", p));
+            overrides.push(format!("--port {p}"));
             p
         }
         None => config.server.port,
     };
     if let Some(s) = seed {
-        overrides.push(format!("--seed {}", s));
+        overrides.push(format!("--seed {s}"));
     }
     let seed = seed.unwrap_or_else(|| holdem::card::Rng::from_entropy().next_u64());
     let server = Server::start(settings.clone(), Some(port), seed)
-        .map_err(|e| format!("could not listen on port {}: {}", port, e))?;
+        .map_err(|e| format!("could not listen on port {port}: {e}"))?;
     let port = server.port.unwrap_or(port);
-    println!("holdem {} ({}) server is running.\n", APP_VERSION, BUILD);
+    println!("holdem {APP_VERSION} ({BUILD}) server is running.\n");
     print!(
         "{}",
         server_report(&settings, &speed.name, port, source, &overrides)
     );
     println!(
-        "\nFor players on the internet, forward TCP port {} to this computer. Press Ctrl-C to stop.\n",
-        port
+        "\nFor players on the internet, forward TCP port {port} to this computer. Press Ctrl-C to stop.\n"
     );
     let mut last = None;
     while server.is_running() {
@@ -468,7 +466,7 @@ fn run_config(action: &ConfigAction, chosen: Option<&Path>) -> Result<(), String
                 match Config::read(path) {
                     Ok(current) => config::render(&current),
                     Err(e) => {
-                        eprintln!("Could not read the old file ({}); writing the defaults.", e);
+                        eprintln!("Could not read the old file ({e}); writing the defaults.");
                         config::template()
                     }
                 }
@@ -513,7 +511,7 @@ fn run_config(action: &ConfigAction, chosen: Option<&Path>) -> Result<(), String
 }
 
 fn fail(message: impl std::fmt::Display) -> ! {
-    eprintln!("error: {}", message);
+    eprintln!("error: {message}");
     std::process::exit(1);
 }
 
@@ -530,7 +528,7 @@ fn main() {
         }
         _ => match Config::load(chosen) {
             Ok((c, source)) => (c, source.map(absolute)),
-            Err(e) => fail(format!("in the settings file: {}", e)),
+            Err(e) => fail(format!("in the settings file: {e}")),
         },
     };
     if let Action::Server(server) = &options.action {
@@ -617,7 +615,7 @@ seats = 4
         assert_eq!(o.config, Some(PathBuf::from("b.toml")));
         let config = |o: Options| match o.action {
             Action::Config(c) => c,
-            other => panic!("not a config command: {:?}", other),
+            other => panic!("not a config command: {other:?}"),
         };
         assert_eq!(
             config(parse(&["config", "write"]).unwrap()),
@@ -694,12 +692,7 @@ seats = 4
             "folded after 1 s",
             "protocol versions",
         ] {
-            assert!(
-                text.contains(expected),
-                "missing {:?} in:\n{}",
-                expected,
-                text
-            );
+            assert!(text.contains(expected), "missing {expected:?} in:\n{text}");
         }
         let defaults = server_report(&s, "Normal", 7777, None, &[]);
         assert!(defaults.contains("built-in defaults"));

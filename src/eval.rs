@@ -40,11 +40,11 @@ impl Category {
 
 fn pack(category: Category, k: [u8; 5]) -> Score {
     ((category as u32) << 20)
-        | ((k[0] as u32) << 16)
-        | ((k[1] as u32) << 12)
-        | ((k[2] as u32) << 8)
-        | ((k[3] as u32) << 4)
-        | (k[4] as u32)
+        | (u32::from(k[0]) << 16)
+        | (u32::from(k[1]) << 12)
+        | (u32::from(k[2]) << 8)
+        | (u32::from(k[3]) << 4)
+        | u32::from(k[4])
 }
 
 pub fn category(score: Score) -> Category {
@@ -290,7 +290,7 @@ mod tests {
 
     fn full_deck() -> Vec<Card> {
         let mut v = Vec::new();
-        for &suit in Suit::ALL.iter() {
+        for &suit in &Suit::ALL {
             for rank in 2..=14u8 {
                 v.push(Card::new(rank, suit));
             }
@@ -484,8 +484,7 @@ mod tests {
             assert_eq!(
                 evaluate(&hand),
                 best_of_subsets(&hand),
-                "mismatch on {:?}",
-                hand
+                "mismatch on {hand:?}"
             );
         }
     }

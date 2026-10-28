@@ -355,7 +355,7 @@ impl Sound {
             return;
         }
         // Loudness is perceived roughly logarithmically; squaring feels even.
-        let gain = (self.volume as f32 / 100.0).powi(2);
+        let gain = (f32::from(self.volume) / 100.0).powi(2);
         let index = Cue::ALL.iter().position(|&c| c == cue).unwrap_or(0);
         self.output_play(&self.bank[index], gain, delay_ms);
     }
@@ -389,25 +389,23 @@ mod tests {
 
     #[test]
     fn every_cue_is_short_clean_and_audible() {
-        for &cue in Cue::ALL.iter() {
+        for &cue in &Cue::ALL {
             let s = synthesize(cue);
-            assert!(!s.is_empty(), "{:?} is empty", cue);
+            assert!(!s.is_empty(), "{cue:?} is empty");
             assert!(
                 s.len() < 2 * SAMPLE_RATE as usize,
-                "{:?} is longer than two seconds",
-                cue
+                "{cue:?} is longer than two seconds"
             );
             let peak = s.iter().fold(0.0f32, |m, x| m.max(x.abs()));
             assert!(
                 s.iter().all(|x| x.is_finite()),
-                "{:?} has invalid samples",
-                cue
+                "{cue:?} has invalid samples"
             );
-            assert!(peak <= 0.9 + 1e-6, "{:?} peaks at {}", cue, peak);
-            assert!(peak > 0.05, "{:?} is nearly silent ({})", cue, peak);
+            assert!(peak <= 0.9 + 1e-6, "{cue:?} peaks at {peak}");
+            assert!(peak > 0.05, "{cue:?} is nearly silent ({peak})");
             // Starts and ends quietly, so there is no click.
-            assert!(s[0].abs() < 0.05, "{:?} starts with a click", cue);
-            assert!(s[s.len() - 1].abs() < 0.05, "{:?} ends with a click", cue);
+            assert!(s[0].abs() < 0.05, "{cue:?} starts with a click");
+            assert!(s[s.len() - 1].abs() < 0.05, "{cue:?} ends with a click");
         }
     }
 

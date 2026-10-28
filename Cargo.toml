@@ -12,6 +12,17 @@ repository = "https://github.com/earomc/holdem"
 # The oldest Rust that builds holdem; CI checks it.
 rust-version = "1.88"
 
+# Lints for both packages, on top of the defaults.
+[workspace.lints.rust]
+# src/sound.rs checks `feature = "sound"`, which holdem-server never has.
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("sound"))'] }
+
+[workspace.lints.clippy]
+uninlined_format_args = "warn"
+cast_lossless = "warn"
+redundant_closure_for_method_calls = "warn"
+explicit_iter_loop = "warn"
+
 [workspace.dependencies]
 ratatui = "0.30.2"
 unicode-width = "0.2"
@@ -25,6 +36,9 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
+
+[lints]
+workspace = true
 
 [features]
 # Sound effects through rodio. Build with `--no-default-features` (or build the

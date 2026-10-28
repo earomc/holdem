@@ -320,7 +320,7 @@ fn players_join_and_leave_only_between_hands() {
     g.take_events();
     let before = g.total_chips();
     let gone = g.remove_player(3).unwrap();
-    assert_eq!(g.total_chips(), before - gone as u64);
+    assert_eq!(g.total_chips(), before - u64::from(gone));
     assert!(g.players[3].vacant && g.players[3].out);
     assert!(
         g.seat_player(1, "Zed", false, Personality::default(), 500)

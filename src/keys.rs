@@ -454,7 +454,7 @@ pub fn name(key: KeyCode) -> String {
         Right => "→".to_string(),
         PageUp => "PgUp".to_string(),
         PageDown => "PgDn".to_string(),
-        KeyCode::F(n) => format!("F{}", n),
+        KeyCode::F(n) => format!("F{n}"),
         other => other.to_string(),
     }
 }
@@ -493,7 +493,7 @@ pub fn key(place: Place, cmd: Cmd) -> String {
         .rows
         .iter()
         .find(|r| r.keys.iter().any(|&(_, c)| c == cmd))
-        .unwrap_or_else(|| panic!("{:?} has no key in {:?}", cmd, place));
+        .unwrap_or_else(|| panic!("{cmd:?} has no key in {place:?}"));
     short(row)
 }
 
@@ -533,7 +533,7 @@ pub fn reminder_where(place: Place, keep: impl Fn(Cmd) -> bool) -> Vec<(String, 
 pub fn reminder_text(place: Place) -> String {
     reminder(place)
         .iter()
-        .map(|(k, h)| format!("{} {}", k, h))
+        .map(|(k, h)| format!("{k} {h}"))
         .collect::<Vec<_>>()
         .join("   ")
 }
@@ -563,12 +563,12 @@ mod tests {
     fn no_key_means_two_things_at_once() {
         for places in TOGETHER {
             let mut seen: Vec<(KeyCode, Cmd)> = Vec::new();
-            for &p in places.iter() {
+            for &p in *places {
                 for r in section(p).rows {
                     for &(keys, cmd) in r.keys {
                         for &k in keys {
                             if let Some((_, other)) = seen.iter().find(|(s, _)| same(*s, k)) {
-                                panic!("{:?} means {:?} and {:?} in {:?}", k, other, cmd, places);
+                                panic!("{k:?} means {other:?} and {cmd:?} in {places:?}");
                             }
                             seen.push((k, cmd));
                         }

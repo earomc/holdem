@@ -353,7 +353,7 @@ pub fn connect(address: &str, default_port: u16, timeout: Duration) -> io::Resul
     {
         address.to_string()
     } else {
-        format!("{}:{}", address, default_port)
+        format!("{address}:{default_port}")
     };
     let addrs: Vec<SocketAddr> = with_port.to_socket_addrs()?.collect();
     let mut last_err = io::Error::new(io::ErrorKind::NotFound, "address not found");
@@ -549,7 +549,7 @@ mod tests {
             }
             thread::sleep(Duration::from_millis(10));
         }
-        assert!(hands >= 3, "only {} hands were played", hands);
+        assert!(hands >= 3, "only {hands} hands were played");
     }
 
     #[test]
@@ -566,8 +566,7 @@ mod tests {
             found
                 .iter()
                 .any(|f| f.info.table == "Kitchen table" && f.info.port == port),
-            "found {:?}",
-            found
+            "found {found:?}"
         );
     }
 
@@ -661,7 +660,7 @@ mod tests {
     fn addresses_get_the_default_port() {
         let server = Server::start(TableSettings::default(), Some(0), 1).unwrap();
         let port = server.port.unwrap();
-        assert!(connect(&format!("127.0.0.1:{}", port), 1, Duration::from_secs(2)).is_ok());
+        assert!(connect(&format!("127.0.0.1:{port}"), 1, Duration::from_secs(2)).is_ok());
         assert!(connect("127.0.0.1", port, Duration::from_secs(2)).is_ok());
         assert!(connect("localhost", port, Duration::from_secs(2)).is_ok());
     }

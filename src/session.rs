@@ -59,8 +59,8 @@ impl Session {
                 .as_ref()
                 .and_then(|s| s.port)
                 .map(|port| match holdem::net::local_ip() {
-                    Some(ip) => format!("{}:{}", ip, port),
-                    None => format!("this computer's address, port {}", port),
+                    Some(ip) => format!("{ip}:{port}"),
+                    None => format!("this computer's address, port {port}"),
                 });
         Session {
             kind,

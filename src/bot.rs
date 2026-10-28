@@ -141,7 +141,10 @@ fn shuffle<T>(items: &mut [T], rng: &mut Rng) {
 /// Picks `count` bots with the default names: unique names and, for up to
 /// eight bots, unique playing styles.
 pub fn roster(count: usize, rng: &mut Rng) -> Vec<(String, Personality)> {
-    let names: Vec<String> = DEFAULT_NAMES.iter().map(|n| n.to_string()).collect();
+    let names: Vec<String> = DEFAULT_NAMES
+        .iter()
+        .map(std::string::ToString::to_string)
+        .collect();
     roster_from(&names, count, rng)
 }
 
@@ -172,7 +175,7 @@ pub fn unused_name(names: &[String], taken: &[String], rng: &mut Rng) -> String 
         names[rng.below(names.len() as u64) as usize].clone()
     };
     (2..)
-        .map(|k| format!("{} {}", base, k))
+        .map(|k| format!("{base} {k}"))
         .find(|candidate| !taken.contains(candidate))
         .expect("an unused number exists")
 }
@@ -204,7 +207,7 @@ pub fn equity(hole: &[Card], board: &[Card], opponents: usize, samples: u32, rng
         known[c.index()] = true;
     }
     let mut pool: Vec<Card> = Vec::with_capacity(52);
-    for &suit in Suit::ALL.iter() {
+    for &suit in &Suit::ALL {
         for rank in 2..=14u8 {
             let c = Card::new(rank, suit);
             if !known[c.index()] {
@@ -299,9 +302,9 @@ fn resolve(intent: Intent, legal: &Legal, unit: u32) -> Action {
             let rounded = (target.saturating_add(unit / 2) / unit) * unit;
             let t = rounded.clamp(legal.min_to, legal.max_to);
             // Chips this raise adds from the stack.
-            let committed = (t + legal.stack - legal.max_to) as u64;
+            let committed = u64::from(t + legal.stack - legal.max_to);
             // Raising away most of the stack is simply an all-in.
-            if t >= legal.max_to || committed * 4 >= legal.stack as u64 * 3 {
+            if t >= legal.max_to || committed * 4 >= u64::from(legal.stack) * 3 {
                 Action::AllIn
             } else {
                 Action::RaiseTo(t)
@@ -604,13 +607,13 @@ mod tests {
         let mut rng = Rng::seeded(11);
         // Pocket aces against one random hand win about 85% of the time.
         let aa = equity(&hand("As Ah"), &[], 1, 6000, &mut rng);
-        assert!((0.82..0.88).contains(&aa), "AA equity {}", aa);
+        assert!((0.82..0.88).contains(&aa), "AA equity {aa}");
         // Seven-deuce offsuit wins about 35% of the time heads-up.
         let bad = equity(&hand("7d 2c"), &[], 1, 6000, &mut rng);
-        assert!((0.31..0.39).contains(&bad), "72o equity {}", bad);
+        assert!((0.31..0.39).contains(&bad), "72o equity {bad}");
         // A royal flush cannot lose.
         let nuts = equity(&hand("As Ks"), &hand("Qs Js Ts 2c 3d"), 3, 500, &mut rng);
-        assert!(nuts > 0.999, "royal flush equity {}", nuts);
+        assert!(nuts > 0.999, "royal flush equity {nuts}");
         // The more opponents, the lower the equity.
         let multi = equity(&hand("As Ah"), &[], 5, 3000, &mut rng);
         assert!(multi < aa - 0.2);
@@ -691,7 +694,7 @@ mod tests {
                 }
             }
         }
-        assert!(raises * 2 > trials, "only {} of {} raised", raises, trials);
+        assert!(raises * 2 > trials, "only {raises} of {trials} raised");
     }
 
     #[test]
@@ -710,12 +713,7 @@ mod tests {
                 }
             }
         }
-        assert!(
-            folds * 10 >= trials * 8,
-            "only {} of {} folded",
-            folds,
-            trials
-        );
+        assert!(folds * 10 >= trials * 8, "only {folds} of {trials} folded");
     }
 
     #[test]
@@ -746,11 +744,7 @@ mod tests {
                 let a = decide(&g, seat, &mut rng);
                 decisions += 1;
                 let mut probe = g.clone();
-                assert!(
-                    probe.act(a).is_ok(),
-                    "bot proposed an illegal action {:?}",
-                    a
-                );
+                assert!(probe.act(a).is_ok(), "bot proposed an illegal action {a:?}");
                 g.act(a).unwrap();
             }
         }

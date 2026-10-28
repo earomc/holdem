@@ -87,7 +87,7 @@ pub fn fit(text: &str, width: usize) -> String {
         return "…".to_string();
     }
     let (head, _) = split_at_width(text, width - 1);
-    format!("{}…", head)
+    format!("{head}…")
 }
 
 /// Word-wraps `text` into lines of at most `width` columns. Continuation lines
@@ -142,7 +142,7 @@ pub fn wrap_text(text: &str, width: usize, indent: usize) -> Vec<String> {
     lines
         .into_iter()
         .enumerate()
-        .map(|(i, l)| if i == 0 { l } else { format!("{}{}", pad, l) })
+        .map(|(i, l)| if i == 0 { l } else { format!("{pad}{l}") })
         .collect()
 }
 
@@ -269,7 +269,7 @@ pub fn reminder_spans<'a>(entries: impl Iterator<Item = (String, &'a str)>) -> V
             spans.push(Span::raw("   "));
         }
         spans.push(key(&k));
-        spans.push(Span::raw(format!(" {}", words)));
+        spans.push(Span::raw(format!(" {words}")));
     }
     spans
 }
@@ -300,7 +300,7 @@ pub fn big_number(text: &str) -> [String; 3] {
     let mut rows = [String::new(), String::new(), String::new()];
     for (i, c) in text.chars().enumerate() {
         if i > 0 {
-            for r in rows.iter_mut() {
+            for r in &mut rows {
                 r.push(' ');
             }
         }
@@ -368,7 +368,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
 
 fn title_block(text: &str) -> Block<'static> {
     framed(
-        Line::from(Span::styled(format!(" {} ", text), yellow())),
+        Line::from(Span::styled(format!(" {text} "), yellow())),
         Color::Green,
     )
     .title_alignment(Alignment::Center)
@@ -441,8 +441,7 @@ fn setup_row_text(app: &App, row: SetupRow) -> (&'static str, String, String) {
                 format!("{}  (you + {} bots)", s.seats, s.seats - 1)
             },
             format!(
-                "How many seats the table has ({} to {}).",
-                MIN_PLAYERS, MAX_PLAYERS
+                "How many seats the table has ({MIN_PLAYERS} to {MAX_PLAYERS})."
             ),
         ),
         SetupRow::FillWithBots => (
@@ -470,8 +469,7 @@ fn setup_row_text(app: &App, row: SetupRow) -> (&'static str, String, String) {
                 "Blinds go up",
                 r.levels_text(),
                 format!(
-                    "Rising blinds push the game towards an end (each level is {}% to {}% higher).",
-                    low, high
+                    "Rising blinds push the game towards an end (each level is {low}% to {high}% higher)."
                 ),
             )
         }
@@ -526,8 +524,7 @@ fn setup_row_text(app: &App, row: SetupRow) -> (&'static str, String, String) {
             }
             .to_string(),
             format!(
-                "Whether players may turn on the win-chance hint (in the settings, key {}).",
-                settings
+                "Whether players may turn on the win-chance hint (in the settings, key {settings})."
             ),
         ),
     }
@@ -550,11 +547,11 @@ fn draw_setup(frame: &mut Frame, app: &App, area: Rect) {
         let (label, value, _) = setup_row_text(app, *row);
         let text = if i == selected && *row == SetupRow::Name {
             // Typed in place: a cursor instead of the ◀ ▶ of stepped values.
-            format!(" ▶ {:<21}  {}▏", label, value)
+            format!(" ▶ {label:<21}  {value}▏")
         } else if i == selected {
-            format!(" ▶ {:<21}◀ {} ▶", label, value)
+            format!(" ▶ {label:<21}◀ {value} ▶")
         } else {
-            format!("   {:<21}  {}", label, value)
+            format!("   {label:<21}  {value}")
         };
         let style = if i == selected {
             yellow()
@@ -570,7 +567,7 @@ fn draw_setup(frame: &mut Frame, app: &App, area: Rect) {
         .take(2)
     {
         lines.push(Line::from(Span::styled(
-            format!(" {}", l),
+            format!(" {l}"),
             Style::new().fg(Color::Cyan),
         )));
     }
@@ -624,7 +621,7 @@ fn input_line(label: &str, value: &str, active: bool) -> Line<'static> {
     let style = if active { yellow() } else { Style::new() };
     Line::from(vec![
         Span::raw(format!(" {} {:<10}", if active { "▶" } else { " " }, label)),
-        Span::styled(format!("{}{}", value, cursor), style),
+        Span::styled(format!("{value}{cursor}"), style),
     ])
 }
 
@@ -680,7 +677,7 @@ fn draw_join(frame: &mut Frame, app: &App, area: Rect) {
         .take(2)
     {
         lines.push(Line::from(Span::styled(
-            format!(" {}", l),
+            format!(" {l}"),
             Style::new().fg(Color::LightRed),
         )));
     }
@@ -777,13 +774,13 @@ fn draw_lobby(frame: &mut Frame, app: &App, area: Rect) {
             } else {
                 "No bots: only people play."
             };
-            lines.push(Line::from(Span::styled(format!(" {}", bots), dim())));
+            lines.push(Line::from(Span::styled(format!(" {bots}"), dim())));
             for w in wrap_text(
                 &rules_summary(&l.rules, l.fluctuation),
                 inner_w.saturating_sub(2),
                 0,
             ) {
-                lines.push(Line::from(Span::styled(format!(" {}", w), dim())));
+                lines.push(Line::from(Span::styled(format!(" {w}"), dim())));
             }
         }
     }
@@ -831,7 +828,7 @@ fn seat_title(v: &TableView, seat: usize) -> Line<'static> {
     let t = tags(v, seat);
     if !t.is_empty() && !s.out {
         spans.push(Span::styled(
-            format!(" [{}]", t),
+            format!(" [{t}]"),
             Style::new().fg(Color::Yellow),
         ));
     }
@@ -953,9 +950,9 @@ fn draw_board(frame: &mut Frame, v: &TableView, area: Rect) {
 /// The pot measured in big blinds, e.g. "worth 9.5 big blinds": how big it is
 /// compared with what it costs to play a hand.
 pub fn big_blinds_text(amount: u32, bb: u32) -> String {
-    let bbs = amount as f64 / bb.max(1) as f64;
+    let bbs = f64::from(amount) / f64::from(bb.max(1));
     let number = if bbs < 10.0 && bbs.fract() != 0.0 {
-        format!("{:.1}", bbs)
+        format!("{bbs:.1}")
     } else {
         format!("{}", bbs.round() as u64)
     };
@@ -964,14 +961,14 @@ pub fn big_blinds_text(amount: u32, bb: u32) -> String {
     } else {
         "big blinds"
     };
-    format!("worth {} {}", number, unit)
+    format!("worth {number} {unit}")
 }
 
 fn draw_pot(frame: &mut Frame, app: &App, v: &TableView, area: Rect) {
     let finished = matches!(v.state, State::HandOver | State::GameOver);
     let amount = if finished { v.last_pot } else { v.pot };
     let flashing = app.pot_flash.is_some_and(|t| {
-        t.elapsed() < Duration::from_millis(app.config.client.pot_flash_ms as u64)
+        t.elapsed() < Duration::from_millis(u64::from(app.config.client.pot_flash_ms))
     });
     let (main, border) = if finished {
         (Color::Green, Color::Green)
@@ -1004,7 +1001,7 @@ fn draw_pot(frame: &mut Frame, app: &App, v: &TableView, area: Rect) {
     } else {
         vec![
             Line::from(""),
-            Line::from(Span::styled(format!("{} chips", number), style)),
+            Line::from(Span::styled(format!("{number} chips"), style)),
             Line::from(""),
         ]
     };
@@ -1136,7 +1133,7 @@ fn draw_you(frame: &mut Frame, app: &App, v: &TableView, area: Rect) {
             } else {
                 Style::new().fg(Color::Yellow)
             };
-            parts.push(Span::styled(format!("{}s left to act", secs), style));
+            parts.push(Span::styled(format!("{secs}s left to act"), style));
         }
         if !parts.is_empty() {
             lines.push(Line::from(parts));
@@ -1231,7 +1228,7 @@ fn footer_lines(app: &App, v: &TableView, width: usize) -> Vec<Line<'static>> {
                 }
             }
             if let Some(secs) = v.next_hand_seconds_left {
-                spans.push(Span::styled(format!("   · starts in {}s", secs), dim()));
+                spans.push(Span::styled(format!("   · starts in {secs}s"), dim()));
             }
             lines.push(Line::from(spans));
         }
@@ -1267,9 +1264,9 @@ fn footer_lines(app: &App, v: &TableView, width: usize) -> Vec<Line<'static>> {
                 } else {
                     ""
                 };
-                let mut text = format!("{}{} is thinking…", prefix, who);
+                let mut text = format!("{prefix}{who} is thinking…");
                 if let Some(secs) = v.turn_seconds_left {
-                    text.push_str(&format!(" ({}s left)", secs));
+                    text.push_str(&format!(" ({secs}s left)"));
                 }
                 lines.push(Line::from(Span::styled(
                     fit(&text, width),
@@ -1326,7 +1323,7 @@ fn draw_header(frame: &mut Frame, app: &App, v: &TableView, area: Rect) {
     } else {
         format!("Hand #{}", v.hand_no)
     };
-    let left = format!(" ♠ {}  ·  {} of {} players in", hand, alive, seated);
+    let left = format!(" ♠ {hand}  ·  {alive} of {seated} players in");
     let mode = match app.session.as_ref().map(|s| s.kind) {
         Some(Kind::Host) => "HOSTING  ·  ",
         Some(Kind::Guest) => "ONLINE  ·  ",
@@ -1577,11 +1574,11 @@ mod tests {
             "",
         ];
         for width in [5usize, 10, 20, 36, 60] {
-            for t in texts.iter() {
+            for t in &texts {
                 let lines = wrap_text(t, width, 2);
                 assert!(!lines.is_empty());
                 for l in &lines {
-                    assert!(text_width(l) <= width, "{:?} is wider than {}", l, width);
+                    assert!(text_width(l) <= width, "{l:?} is wider than {width}");
                 }
                 let joined: Vec<String> = lines.iter().map(|l| l.trim().to_string()).collect();
                 assert_eq!(joined.join(" ").replace(' ', ""), t.replace(' ', ""));
@@ -1613,8 +1610,7 @@ mod tests {
             let w = text_width(&rows[0]);
             assert!(
                 rows.iter().all(|r| text_width(r) == w),
-                "{} has ragged rows",
-                n
+                "{n} has ragged rows"
             );
         }
         assert!(text_width(&big_number("999,999")[0]) <= (POT_WIDTH - 2) as usize);
@@ -1839,10 +1835,7 @@ mod render_tests {
         // Every situation was seen: waiting for others, an all-in run-out, folded.
         assert!(
             waiting > 0 && runout > 0 && folded > 0,
-            "waiting {} run-out {} folded {}",
-            waiting,
-            runout,
-            folded
+            "waiting {waiting} run-out {runout} folded {folded}"
         );
     }
 

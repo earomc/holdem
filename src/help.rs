@@ -307,9 +307,8 @@ pub fn pages(facts: &Facts) -> Vec<Page> {
                     "Win-chance hint",
                     format!(
                         "Whether players at this table may turn on the win-chance hint (in the \
-                     settings, key {}). When the table does not allow it, it cannot be \
-                     switched on.",
-                        settings
+                     settings, key {settings}). When the table does not allow it, it cannot be \
+                     switched on."
                     ),
                 ),
             ],
@@ -772,16 +771,15 @@ pub fn pages(facts: &Facts) -> Vec<Page> {
                 P(
                     "Win chance",
                     format!(
-                        "the optional hint (settings, key {}; a table may not allow it), shown \
+                        "the optional hint (settings, key {settings}; a table may not allow it), shown \
                  while you are in a hand: how often your hand would win against the same \
                  number of opponents holding random cards, estimated by dealing out \
                  thousands of random boards. Real opponents who bet usually hold better than \
                  random cards, so treat it as a rough guide. Calling tends to pay off when \
-                 your win chance is above the pot odds.",
-                        settings
+                 your win chance is above the pot odds."
                     ),
                 ),
-                H(format!("YOUR STYLE (KEY {})", profile)),
+                H(format!("YOUR STYLE (KEY {profile})")),
                 T(format!(
                     "The game counts how often you play a hand (put chips in voluntarily before \
                the flop), how often you raise first, how often you bet or raise rather than \
@@ -807,5 +805,5 @@ fn number_word(n: usize) -> String {
     ];
     WORDS
         .get(n)
-        .map_or_else(|| n.to_string(), |w| w.to_string())
+        .map_or_else(|| n.to_string(), std::string::ToString::to_string)
 }

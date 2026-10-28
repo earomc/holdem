@@ -115,12 +115,10 @@ impl Mismatch {
     pub fn to_client(&self) -> String {
         match *self {
             Mismatch::TheyAreOlder { theirs, ours_min } => format!(
-                "Your holdem is too old for this table (it speaks protocol {}, the table needs {} or newer). Please update holdem.",
-                theirs, ours_min
+                "Your holdem is too old for this table (it speaks protocol {theirs}, the table needs {ours_min} or newer). Please update holdem."
             ),
             Mismatch::TheyAreNewer { their_min, ours } => format!(
-                "This table runs an older holdem (holdem {}, protocol {}) than yours (protocol {} or newer). Ask the host to update holdem.",
-                APP_VERSION, ours, their_min
+                "This table runs an older holdem (holdem {APP_VERSION}, protocol {ours}) than yours (protocol {their_min} or newer). Ask the host to update holdem."
             ),
         }
     }
@@ -129,12 +127,10 @@ impl Mismatch {
     pub fn to_client_about_table(&self, table: &str) -> String {
         match *self {
             Mismatch::TheyAreOlder { .. } => format!(
-                "\"{}\" runs an older version of holdem that this version cannot play with. Ask its host to update.",
-                table
+                "\"{table}\" runs an older version of holdem that this version cannot play with. Ask its host to update."
             ),
             Mismatch::TheyAreNewer { .. } => format!(
-                "\"{}\" runs a newer version of holdem. Please update yours (you have holdem {}).",
-                table, APP_VERSION
+                "\"{table}\" runs a newer version of holdem. Please update yours (you have holdem {APP_VERSION})."
             ),
         }
     }

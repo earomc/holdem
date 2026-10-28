@@ -286,7 +286,10 @@ impl Default for GameConfig {
 impl Default for BotConfig {
     fn default() -> BotConfig {
         BotConfig {
-            names: bot::DEFAULT_NAMES.iter().map(|s| s.to_string()).collect(),
+            names: bot::DEFAULT_NAMES
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
             thinking_samples: DEFAULT_BOT_SAMPLES,
         }
     }
@@ -583,20 +586,20 @@ fn wrap_list(first: &str, parts: &[String], indent: &str, close: &str) -> String
     let mut line = first.to_string();
     for (i, part) in parts.iter().enumerate() {
         let piece = if i + 1 < parts.len() {
-            format!("{},", part)
+            format!("{part},")
         } else {
-            format!("{}{}", part, close)
+            format!("{part}{close}")
         };
         let starts_line = line.ends_with('[') || line == indent;
         let candidate = if starts_line {
-            format!("{}{}", line, piece)
+            format!("{line}{piece}")
         } else {
-            format!("{} {}", line, piece)
+            format!("{line} {piece}")
         };
         if candidate.chars().count() > WRAP && !starts_line {
             out.push_str(&line);
             out.push('\n');
-            line = format!("{}{}", indent, piece);
+            line = format!("{indent}{piece}");
         } else {
             line = candidate;
         }
@@ -612,10 +615,10 @@ fn wrap_list(first: &str, parts: &[String], indent: &str, close: &str) -> String
 fn render_value(prefix: &str, value: &toml::Value, indent: &str) -> String {
     match value {
         toml::Value::Array(items) => {
-            let parts: Vec<String> = items.iter().map(|v| v.to_string()).collect();
-            wrap_list(&format!("{}[", prefix), &parts, indent, "]")
+            let parts: Vec<String> = items.iter().map(std::string::ToString::to_string).collect();
+            wrap_list(&format!("{prefix}["), &parts, indent, "]")
         }
-        other => format!("{}{}", prefix, other),
+        other => format!("{prefix}{other}"),
     }
 }
 
@@ -645,7 +648,7 @@ fn comment(out: &mut String, text: &str) {
             if !first && current.chars().count() + 1 + word.chars().count() > WRAP {
                 out.push_str(&current);
                 out.push('\n');
-                current = format!("# {}", indent);
+                current = format!("# {indent}");
                 current.push_str(word);
             } else {
                 current.push(' ');
@@ -658,7 +661,7 @@ fn comment(out: &mut String, text: &str) {
 }
 
 fn is_table_array(v: &toml::Value) -> bool {
-    matches!(v, toml::Value::Array(a) if !a.is_empty() && a.iter().all(|x| x.is_table()))
+    matches!(v, toml::Value::Array(a) if !a.is_empty() && a.iter().all(toml::Value::is_table))
 }
 
 fn render_table(out: &mut String, path: &str, table: &toml::Table, defaults: &toml::Table) {
@@ -666,7 +669,7 @@ fn render_table(out: &mut String, path: &str, table: &toml::Table, defaults: &to
         if path.is_empty() {
             key.to_string()
         } else {
-            format!("{}.{}", path, key)
+            format!("{path}.{key}")
         }
     };
     let default_of = |key: &str| {
@@ -685,7 +688,7 @@ fn render_table(out: &mut String, path: &str, table: &toml::Table, defaults: &to
         let default_line = render_value("Default: ", &default_of(key), "          ");
         raw_comment(out, &default_line);
         out.push_str(&render_value(
-            &format!("{} = ", key),
+            &format!("{key} = "),
             value,
             &" ".repeat(key.len() + 4),
         ));
@@ -707,9 +710,9 @@ fn render_table(out: &mut String, path: &str, table: &toml::Table, defaults: &to
         );
         for item in items {
             if let toml::Value::Table(t) = item {
-                out.push_str(&format!("[[{}]]\n", full));
+                out.push_str(&format!("[[{full}]]\n"));
                 for (k, v) in t {
-                    out.push_str(&format!("{} = {}\n", k, v));
+                    out.push_str(&format!("{k} = {v}\n"));
                 }
                 out.push('\n');
             }
@@ -730,7 +733,7 @@ fn render_table(out: &mut String, path: &str, table: &toml::Table, defaults: &to
             out.push_str(&"#".repeat(WRAP));
             out.push('\n');
         }
-        out.push_str(&format!("[{}]\n", full));
+        out.push_str(&format!("[{full}]\n"));
         comment(out, doc(&full));
         render_table(out, &full, sub, sub_defaults);
     }
@@ -765,7 +768,7 @@ pub fn differences(config: &Config) -> Vec<String> {
             let path = if prefix.is_empty() {
                 key.clone()
             } else {
-                format!("{}.{}", prefix, key)
+                format!("{prefix}.{key}")
             };
             match (value, defaults.get(key)) {
                 (toml::Value::Table(sub), Some(toml::Value::Table(d))) => walk(&path, sub, d, out),
@@ -800,7 +803,7 @@ fn check_rule_keys(text: &str) -> Result<(), String> {
     let known = toml::Table::try_from(Rules::default()).map_err(|e| e.to_string())?;
     for key in rules.keys() {
         if !known.contains_key(key) {
-            let mut names: Vec<&str> = known.keys().map(|s| s.as_str()).collect();
+            let mut names: Vec<&str> = known.keys().map(std::string::String::as_str).collect();
             names.sort();
             return Err(format!(
                 "unknown setting `{}` in [game.rules]; the settings there are: {}",
@@ -814,13 +817,10 @@ fn check_rule_keys(text: &str) -> Result<(), String> {
 
 fn check_list(name: &str, values: &[u32], allow_zero: bool) -> Result<(), String> {
     if values.is_empty() {
-        return Err(format!(
-            "client.setup.{} must list at least one value",
-            name
-        ));
+        return Err(format!("client.setup.{name} must list at least one value"));
     }
     if !allow_zero && values.contains(&0) {
-        return Err(format!("client.setup.{} must not contain 0", name));
+        return Err(format!("client.setup.{name} must not contain 0"));
     }
     Ok(())
 }
@@ -830,9 +830,8 @@ impl Config {
     pub fn parse(text: &str) -> Result<Config, String> {
         let config: Config = toml::from_str(text).map_err(|e| {
             format!(
-                "{}\n(A file written by an older holdem may use old setting names: \
-                 `holdem config write new.toml` writes the current format.)",
-                e
+                "{e}\n(A file written by an older holdem may use old setting names: \
+                 `holdem config write new.toml` writes the current format.)"
             )
         })?;
         check_rule_keys(text)?;
@@ -904,8 +903,7 @@ impl Config {
         }
         if !(MIN_PLAYERS..=MAX_PLAYERS).contains(&g.seats) {
             return Err(format!(
-                "game.seats must be between {} and {}",
-                MIN_PLAYERS, MAX_PLAYERS
+                "game.seats must be between {MIN_PLAYERS} and {MAX_PLAYERS}"
             ));
         }
         if g.bots.names.iter().any(|n| n.trim().is_empty()) {
@@ -934,8 +932,7 @@ impl Config {
         }
         if !(3..=MAX_PLAYERS).contains(&r.straddle_min_players) {
             return Err(format!(
-                "game.rules.straddle_min_players must be between 3 and {}",
-                MAX_PLAYERS
+                "game.rules.straddle_min_players must be between 3 and {MAX_PLAYERS}"
             ));
         }
         let f = &g.fluctuation;
@@ -1064,7 +1061,7 @@ mod tests {
                 let p = if prefix.is_empty() {
                     k.clone()
                 } else {
-                    format!("{}.{}", prefix, k)
+                    format!("{prefix}.{k}")
                 };
                 out.push((p.clone(), v.clone()));
                 if let toml::Value::Table(sub) = v {
@@ -1091,21 +1088,19 @@ mod tests {
         let paths = paths();
         for (path, value) in &paths {
             let d = doc(path);
-            assert!(!d.is_empty(), "{} has no description", path);
+            assert!(!d.is_empty(), "{path} has no description");
             if value.is_bool() {
                 assert!(
                     d.lines().any(|l| l.starts_with("true:"))
                         && d.lines().any(|l| l.starts_with("false:")),
-                    "{} does not say what true and false do",
-                    path
+                    "{path} does not say what true and false do"
                 );
             }
         }
         for (path, _) in DOCS {
             assert!(
                 paths.iter().any(|(p, _)| p == path),
-                "{} is described but is not a setting",
-                path
+                "{path} is described but is not a setting"
             );
         }
     }
@@ -1127,7 +1122,7 @@ mod tests {
         assert!(text.contains("# Default: [\"Ava\", \"Ben\""));
         assert!(text.contains("\"Priya\"]"));
         for l in text.lines() {
-            assert!(l.chars().count() <= WRAP, "too long: {}", l);
+            assert!(l.chars().count() <= WRAP, "too long: {l}");
         }
     }
 
@@ -1163,7 +1158,7 @@ mod tests {
             "not toml at all [",
         ];
         for text in bad {
-            assert!(Config::parse(text).is_err(), "accepted: {}", text);
+            assert!(Config::parse(text).is_err(), "accepted: {text}");
         }
         let e = Config::parse("[game.rules]\nantez = true\n").unwrap_err();
         assert!(e.contains("antez") && e.contains("ante_divisor"), "{}", e);

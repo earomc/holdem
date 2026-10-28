@@ -214,7 +214,7 @@ impl Rules {
     /// The small blind at a level (1 = first), following the schedule and then
     /// growing by `blind_growth_percent` per level.
     pub fn small_blind_at(&self, level: u32) -> u32 {
-        let base = self.small_blind.max(1) as u64;
+        let base = u64::from(self.small_blind.max(1));
         let schedule: &[u32] = if self.blind_schedule.is_empty() {
             &[100]
         } else {
@@ -222,19 +222,19 @@ impl Rules {
         };
         let i = level.saturating_sub(1) as usize;
         let mut sb = if i < schedule.len() {
-            base * schedule[i] as u64 / 100
+            base * u64::from(schedule[i]) / 100
         } else {
-            let mut v = base * *schedule.last().unwrap_or(&100) as u64 / 100;
-            let growth = self.blind_growth_percent.max(100) as u64;
+            let mut v = base * u64::from(*schedule.last().unwrap_or(&100)) / 100;
+            let growth = u64::from(self.blind_growth_percent.max(100));
             for _ in schedule.len()..=i {
                 v = v * growth / 100;
-                if v > (u32::MAX / 8) as u64 {
+                if v > u64::from(u32::MAX / 8) {
                     break;
                 }
             }
             v
         };
-        sb = sb.clamp(1, (u32::MAX / 8) as u64);
+        sb = sb.clamp(1, u64::from(u32::MAX / 8));
         sb as u32
     }
 
@@ -264,7 +264,7 @@ impl Rules {
         match self.hands_per_level {
             0 => "never".to_string(),
             1 => "every hand".to_string(),
-            n => format!("every {} hands", n),
+            n => format!("every {n} hands"),
         }
     }
 
@@ -272,7 +272,7 @@ impl Rules {
     pub fn hand_limit_text(&self) -> String {
         match self.hand_limit {
             0 => "no limit".to_string(),
-            n => format!("{} hands", n),
+            n => format!("{n} hands"),
         }
     }
 
@@ -312,7 +312,7 @@ impl Rules {
         let when = match self.rebuy_levels {
             0 => return "off".to_string(),
             1 => "during level 1".to_string(),
-            n => format!("during the first {} levels", n),
+            n => format!("during the first {n} levels"),
         };
         format!("{}, for {} chips", when, chips_text(self.rebuy_stack()))
     }
@@ -561,7 +561,7 @@ pub fn ordinal(n: usize) -> String {
         (_, 3) => "rd",
         _ => "th",
     };
-    format!("{}{}", n, suffix)
+    format!("{n}{suffix}")
 }
 
 /// 1234567 -> "1,234,567".
@@ -714,7 +714,7 @@ impl Game {
             p.chips = s;
             p.start_chips = s;
         }
-        self.total_chips = stacks.iter().map(|&s| s as u64).sum();
+        self.total_chips = stacks.iter().map(|&s| u64::from(s)).sum();
         self.button = button % self.players.len();
     }
 
@@ -798,7 +798,7 @@ impl Game {
     pub fn chips_in_play(&self) -> u64 {
         self.players
             .iter()
-            .map(|p| (p.chips + p.total) as u64)
+            .map(|p| u64::from(p.chips + p.total))
             .sum()
     }
 
@@ -815,7 +815,7 @@ impl Game {
     /// and every new hand, so an answer meant for an earlier decision (a key
     /// pressed twice, a message that crossed a new deal) can be recognised.
     pub fn turn_id(&self) -> u64 {
-        ((self.hand_no as u64) << 32) | (self.action_count & 0xFFFF_FFFF)
+        (u64::from(self.hand_no) << 32) | (self.action_count & 0xFFFF_FFFF)
     }
 
     pub fn is_human_turn(&self) -> bool {
@@ -1022,7 +1022,7 @@ impl Game {
             return Err("that seat is taken".to_string());
         }
         self.players[seat] = Player::new(name.to_string(), is_human, personality, chips);
-        self.total_chips += chips as u64;
+        self.total_chips += u64::from(chips);
         if self.hand_no > 0 {
             self.log(format!(
                 "{} joins the table with {} chips",
@@ -1052,7 +1052,7 @@ impl Game {
         let name = p.name.clone();
         let record = self.finish_record(seat, true, 0);
         self.history.push(record);
-        self.total_chips -= chips as u64;
+        self.total_chips -= u64::from(chips);
         self.players[seat] = Player::empty_seat();
         self.log(format!(
             "{} leaves the table with {} chips",
@@ -1074,7 +1074,7 @@ impl Game {
         p.rebuys += 1;
         p.chips = chips;
         let name = p.name.clone();
-        self.total_chips += chips as u64;
+        self.total_chips += u64::from(chips);
         self.log(format!("{} rebuys for {} chips", name, chips_text(chips)));
         self.events.push(GameEvent::Rebuy(seat));
         Ok(())
@@ -1219,8 +1219,8 @@ impl Game {
         self.hand_no += 1;
         self.update_blinds();
         self.choose_positions();
-        let deep = self.bb as u64 * self.stats_min_stack_bb as u64;
-        for p in self.players.iter_mut() {
+        let deep = u64::from(self.bb) * u64::from(self.stats_min_stack_bb);
+        for p in &mut self.players {
             p.hole.clear();
             p.bet = 0;
             p.total = 0;
@@ -1236,7 +1236,7 @@ impl Game {
             p.played_this_hand = false;
             p.raised_this_hand = false;
             // Short stacks must play push-or-fold whatever their style: not counted.
-            p.tracked = p.in_hand && p.chips as u64 >= deep;
+            p.tracked = p.in_hand && u64::from(p.chips) >= deep;
             if p.tracked {
                 p.stats.hands += 1;
             }
@@ -1262,8 +1262,7 @@ impl Game {
         let hand_no = self.hand_no;
         let level = self.level;
         self.log(format!(
-            "--- Hand #{} (level {}, blinds {}/{}) - the button is on {} ---",
-            hand_no, level, sb, bb, dealer
+            "--- Hand #{hand_no} (level {level}, blinds {sb}/{bb}) - the button is on {dealer} ---"
         ));
 
         if ante > 0 {
@@ -1278,7 +1277,7 @@ impl Game {
                     }
                 }
             }
-            self.log(format!("Everyone antes {}", ante));
+            self.log(format!("Everyone antes {ante}"));
         }
 
         let sb_seat = self.sb_seat;
@@ -1288,13 +1287,13 @@ impl Game {
         } else {
             let paid = self.commit(sb_seat, sb);
             let name = self.players[sb_seat].name.clone();
-            self.players[sb_seat].last_action = format!("SB {}", paid);
-            self.log(format!("{} posts the small blind ({})", name, paid));
+            self.players[sb_seat].last_action = format!("SB {paid}");
+            self.log(format!("{name} posts the small blind ({paid})"));
         }
         let paid_bb = self.commit(bb_seat, bb);
         let bb_name = self.players[bb_seat].name.clone();
-        self.players[bb_seat].last_action = format!("BB {}", paid_bb);
-        self.log(format!("{} posts the big blind ({})", bb_name, paid_bb));
+        self.players[bb_seat].last_action = format!("BB {paid_bb}");
+        self.log(format!("{bb_name} posts the big blind ({paid_bb})"));
 
         // The call amount is the full blind even if the poster was short.
         self.current_bet = bb;
@@ -1305,8 +1304,8 @@ impl Game {
             let s = self.next_alive(bb_seat);
             let paid = self.commit(s, straddle);
             let name = self.players[s].name.clone();
-            self.players[s].last_action = format!("Straddle {}", paid);
-            self.log(format!("{} straddles ({})", name, paid));
+            self.players[s].last_action = format!("Straddle {paid}");
+            self.log(format!("{name} straddles ({paid})"));
             self.straddle_seat = Some(s);
             self.current_bet = straddle;
             self.min_raise = straddle;
@@ -1384,7 +1383,7 @@ impl Game {
                 return;
             }
             // The betting round is complete.
-            for p in self.players.iter_mut() {
+            for p in &mut self.players {
                 p.bet = 0;
                 p.acted = false;
             }
@@ -1397,7 +1396,7 @@ impl Game {
             if self.players.iter().filter(|p| p.can_act()).count() <= 1 {
                 // Nobody (or only one player) can bet any more: show the cards and deal out.
                 self.reveal_all = true;
-                for p in self.players.iter_mut() {
+                for p in &mut self.players {
                     if p.live() {
                         p.shown = true;
                     }
@@ -1432,7 +1431,7 @@ impl Game {
             Street::River => unreachable!("no street follows the river"),
         }
         self.board.extend_from_slice(&dealt);
-        for p in self.players.iter_mut() {
+        for p in &mut self.players {
             p.last_action = if p.folded {
                 "Fold".to_string()
             } else if p.all_in {
@@ -1443,7 +1442,7 @@ impl Game {
         }
         let street = self.street.name();
         let board = cards_text(&self.board);
-        self.log(format!("{}: {}", street, board));
+        self.log(format!("{street}: {board}"));
         self.events.push(GameEvent::Street(self.street));
     }
 
@@ -1530,14 +1529,14 @@ impl Game {
         match action {
             Action::Fold => {
                 self.players[seat].folded = true;
-                self.say(seat, "Fold".to_string(), format!("{} folds", name));
+                self.say(seat, "Fold".to_string(), format!("{name} folds"));
                 self.events.push(GameEvent::Fold(seat));
             }
             Action::Check => {
                 if !legal.can_check {
-                    return Err(format!("{} cannot check: there is a bet to call", name));
+                    return Err(format!("{name} cannot check: there is a bet to call"));
                 }
-                self.say(seat, "Check".to_string(), format!("{} checks", name));
+                self.say(seat, "Check".to_string(), format!("{name} checks"));
                 self.events.push(GameEvent::Check(seat));
             }
             Action::Call => {
@@ -1553,11 +1552,11 @@ impl Game {
                 self.say(
                     seat,
                     if all_in {
-                        format!("All-in {}", paid)
+                        format!("All-in {paid}")
                     } else {
-                        format!("Call {}", paid)
+                        format!("Call {paid}")
                     },
-                    format!("{} calls {}{}", name, paid, suffix),
+                    format!("{name} calls {paid}{suffix}"),
                 );
             }
             Action::AllIn => {
@@ -1570,8 +1569,8 @@ impl Game {
                     self.events.push(GameEvent::AllIn(seat));
                     self.say(
                         seat,
-                        format!("All-in {}", paid),
-                        format!("{} calls {} (all-in)", name, paid),
+                        format!("All-in {paid}"),
+                        format!("{name} calls {paid} (all-in)"),
                     );
                 } else {
                     return Err(format!(
@@ -1587,7 +1586,7 @@ impl Game {
             }
             Action::RaiseTo(to) => {
                 if !legal.can_raise {
-                    return Err(format!("{} cannot raise here", name));
+                    return Err(format!("{name} cannot raise here"));
                 }
                 if to < legal.min_to || to > legal.max_to {
                     return Err(format!(
@@ -1622,7 +1621,7 @@ impl Game {
         let suffix = if all_in { " (all-in)" } else { "" };
         let (short, long) = if all_in {
             (
-                format!("All-in {}", to),
+                format!("All-in {to}"),
                 format!(
                     "{} {} {}{}",
                     name,
@@ -1632,12 +1631,9 @@ impl Game {
                 ),
             )
         } else if opening {
-            (format!("Bet {}", to), format!("{} bets {}", name, to))
+            (format!("Bet {to}"), format!("{name} bets {to}"))
         } else {
-            (
-                format!("Raise {}", to),
-                format!("{} raises to {}", name, to),
-            )
+            (format!("Raise {to}"), format!("{name} raises to {to}"))
         };
         self.say(seat, short, long);
     }
@@ -1695,7 +1691,7 @@ impl Game {
     fn reveal_hands(&mut self) {
         let n = self.players.len();
         if !self.rules.muck_losers || self.reveal_all {
-            for p in self.players.iter_mut() {
+            for p in &mut self.players {
                 if p.live() {
                     p.shown = true;
                 }
@@ -1717,7 +1713,7 @@ impl Game {
             let beaten = shown.iter().any(|&(s, t)| s > score && t >= p.total);
             if beaten {
                 let name = p.name.clone();
-                self.log(format!("{} mucks", name));
+                self.log(format!("{name} mucks"));
             } else {
                 shown.push((score, p.total));
                 self.players[i].shown = true;
@@ -1726,7 +1722,7 @@ impl Game {
     }
 
     fn settle(&mut self, contested: bool) {
-        for p in self.players.iter_mut() {
+        for p in &mut self.players {
             p.bet = 0;
         }
         self.current_bet = 0;
@@ -1735,13 +1731,13 @@ impl Game {
         self.refund = self.return_uncalled();
         if let Some((seat, amount)) = self.refund {
             let name = self.players[seat].name.clone();
-            self.log(format!("Uncalled bet of {} returned to {}", amount, name));
+            self.log(format!("Uncalled bet of {amount} returned to {name}"));
         }
 
         self.showdown = contested;
         if contested {
             let board = self.board.clone();
-            for p in self.players.iter_mut() {
+            for p in &mut self.players {
                 if p.live() {
                     let mut cards = p.hole.clone();
                     cards.extend_from_slice(&board);
@@ -1749,20 +1745,20 @@ impl Game {
                 }
             }
             let board_text = cards_text(&board);
-            self.log(format!("Showdown (board: {})", board_text));
+            self.log(format!("Showdown (board: {board_text})"));
             self.reveal_hands();
             for i in 0..self.players.len() {
                 if self.players[i].live() && self.players[i].shown {
                     let hole = cards_text(&self.players[i].hole);
                     let desc = eval::describe(self.players[i].score.unwrap_or(0));
                     let name = self.players[i].name.clone();
-                    self.log(format!("{} shows {}: {}", name, hole, desc));
+                    self.log(format!("{name} shows {hole}: {desc}"));
                 }
             }
         }
 
         let totals: Vec<u32> = self.players.iter().map(|p| p.total).collect();
-        let live: Vec<bool> = self.players.iter().map(|p| p.live()).collect();
+        let live: Vec<bool> = self.players.iter().map(Player::live).collect();
         let scores: Vec<Option<Score>> = self.players.iter().map(|p| p.score).collect();
         self.last_pot = totals.iter().sum();
 
@@ -1780,7 +1776,7 @@ impl Game {
             } else if k == 0 {
                 "the main pot".to_string()
             } else {
-                format!("side pot {}", k)
+                format!("side pot {k}")
             };
             let names: Vec<String> = award
                 .winners
@@ -1816,7 +1812,7 @@ impl Game {
         self.events.push(GameEvent::HandSettled);
 
         // The pot has been paid out.
-        for p in self.players.iter_mut() {
+        for p in &mut self.players {
             p.total = 0;
         }
 
@@ -1828,7 +1824,7 @@ impl Game {
             for &i in &busted {
                 self.players[i].rebuy_pending = true;
                 let name = self.players[i].name.clone();
-                self.log(format!("{} is busted and may rebuy", name));
+                self.log(format!("{name} is busted and may rebuy"));
             }
         } else {
             self.eliminate(busted);
@@ -1980,7 +1976,7 @@ mod tests {
     fn log_numbering_survives_trimming() {
         let mut g = Game::new(Rules::default(), 3, Rng::seeded(1));
         for i in 0..(LOG_LIMIT + 50) {
-            g.log(format!("line {}", i));
+            g.log(format!("line {i}"));
         }
         let (lines, next) = g.log_since(0);
         assert_eq!(lines.len(), LOG_LIMIT);

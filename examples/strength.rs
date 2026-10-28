@@ -15,7 +15,7 @@ fn main() {
                 (equity(&hole, &[], opp, 220, &mut rng) - fair) / spread
             })
             .collect();
-        v.sort_by(|a, b| a.total_cmp(b));
+        v.sort_by(f32::total_cmp);
         let q = |p: f32| v[((v.len() as f32 * p) as usize).min(v.len() - 1)];
         println!(
             "n={} pct(strength>=x): 90%:{:.2} 75%:{:.2} 60%:{:.2} 50%:{:.2} 40%:{:.2} 30%:{:.2} 20%:{:.2} 10%:{:.2} 5%:{:.2}",

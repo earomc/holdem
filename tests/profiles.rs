@@ -8,7 +8,10 @@ use holdem::stats::{MIN_HANDS, Stats, profile};
 /// Plays bot-only games and returns each archetype's statistics, split into
 /// samples of about `chunk` counted hands.
 fn samples(games: u64, chunk: u32) -> Vec<(&'static str, Stats)> {
-    let names: Vec<String> = bot::DEFAULT_NAMES.iter().map(|s| s.to_string()).collect();
+    let names: Vec<String> = bot::DEFAULT_NAMES
+        .iter()
+        .map(std::string::ToString::to_string)
+        .collect();
     let mut out = Vec::new();
     for game_no in 0..games {
         let seats = 6;
@@ -84,20 +87,10 @@ fn styles_are_recognised_from_a_few_hundred_hands() {
         }
     }
     let n = data.len();
-    assert!(n >= 40, "only {} samples", n);
-    println!("{} samples: {} first, {} in the top two", n, right, top_two);
+    assert!(n >= 40, "only {n} samples");
+    println!("{n} samples: {right} first, {top_two} in the top two");
     // Neighbouring styles (Rock/Nit, Loose-aggressive/Gambler) are genuinely similar,
     // so the right style must be first most of the time and nearly always in the top two.
-    assert!(
-        right * 100 >= n * 60,
-        "{} of {} samples recognised",
-        right,
-        n
-    );
-    assert!(
-        top_two * 100 >= n * 85,
-        "{} of {} in the top two",
-        top_two,
-        n
-    );
+    assert!(right * 100 >= n * 60, "{right} of {n} samples recognised");
+    assert!(top_two * 100 >= n * 85, "{top_two} of {n} in the top two");
 }

@@ -120,7 +120,7 @@ pub fn parse_cards(text: &str) -> Option<Vec<Card>> {
 
 /// Space separated card list for log messages, e.g. `A♠ K♦ 9♥`.
 pub fn cards_text(cards: &[Card]) -> String {
-    let parts: Vec<String> = cards.iter().map(|c| c.to_string()).collect();
+    let parts: Vec<String> = cards.iter().map(std::string::ToString::to_string).collect();
     parts.join(" ")
 }
 
@@ -172,7 +172,7 @@ impl Rng {
         if hi <= lo {
             return lo;
         }
-        lo + self.below((hi - lo) as u64 + 1) as u32
+        lo + self.below(u64::from(hi - lo) + 1) as u32
     }
 
     /// Uniform float in `[0, 1)`.
@@ -194,7 +194,7 @@ pub struct Deck {
 impl Deck {
     pub fn new() -> Deck {
         let mut cards = Vec::with_capacity(52);
-        for &suit in Suit::ALL.iter() {
+        for &suit in &Suit::ALL {
             for rank in 2..=14u8 {
                 cards.push(Card::new(rank, suit));
             }
@@ -296,8 +296,8 @@ mod tests {
         for _ in 0..100_000 {
             buckets[rng.below(10) as usize] += 1;
         }
-        for &b in buckets.iter() {
-            assert!((9_000..11_000).contains(&b), "bucket count {}", b);
+        for &b in &buckets {
+            assert!((9_000..11_000).contains(&b), "bucket count {b}");
         }
         for _ in 0..1000 {
             let u = rng.unit();

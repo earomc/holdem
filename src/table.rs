@@ -228,7 +228,7 @@ impl Table {
             let mut unique = wanted.clone();
             let mut k = 2;
             while taken.contains(&unique) {
-                unique = format!("{} {}", wanted, k);
+                unique = format!("{wanted} {k}");
                 k += 1;
             }
             if let Some(c) = self.clients.get_mut(&id) {
@@ -263,14 +263,12 @@ impl Table {
         };
         if c.joined {
             let _ = c.outbox.send(ServerMsg::Notice(format!(
-                "The table did not understand a request: it runs an older holdem ({}).",
-                APP_VERSION
+                "The table did not understand a request: it runs an older holdem ({APP_VERSION})."
             )));
         } else {
             // Not even the greeting could be read: say which version we are and hang up.
             let _ = c.outbox.send(ServerMsg::Goodbye(format!(
-                "This table runs holdem {} (protocol version {} to {}) and could not read your program's greeting. Please use matching versions of holdem.",
-                APP_VERSION, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION
+                "This table runs holdem {APP_VERSION} (protocol version {MIN_PROTOCOL_VERSION} to {PROTOCOL_VERSION}) and could not read your program's greeting. Please use matching versions of holdem."
             )));
             c.drop = true;
         }
@@ -490,7 +488,7 @@ impl Table {
     }
 
     fn delay(&self) -> Duration {
-        Duration::from_millis(self.settings.speed_ms as u64)
+        Duration::from_millis(u64::from(self.settings.speed_ms))
     }
 
     fn client_at(&self, seat: usize) -> Option<(&ClientId, &Client)> {
@@ -662,7 +660,7 @@ impl Table {
                 let timed_out = self.settings.next_hand_seconds > 0
                     && self.hand_over_since.is_some_and(|t| {
                         now.duration_since(t)
-                            >= Duration::from_secs(self.settings.next_hand_seconds as u64)
+                            >= Duration::from_secs(u64::from(self.settings.next_hand_seconds))
                     });
                 if everyone_ready || timed_out {
                     self.start_next_hand(now);
@@ -694,9 +692,9 @@ impl Table {
         }
         let connected = self.client_at(seat).is_some_and(|(_, c)| c.connected);
         let limit = if !connected {
-            Some(Duration::from_secs(self.settings.away_seconds as u64))
+            Some(Duration::from_secs(u64::from(self.settings.away_seconds)))
         } else if self.settings.turn_seconds > 0 && people > 1 {
-            Some(Duration::from_secs(self.settings.turn_seconds as u64))
+            Some(Duration::from_secs(u64::from(self.settings.turn_seconds)))
         } else {
             None
         };
@@ -740,7 +738,7 @@ impl Table {
             return (None, None);
         };
         let left = |since: Instant, total: u32| {
-            let end = since + Duration::from_secs(total as u64);
+            let end = since + Duration::from_secs(u64::from(total));
             end.saturating_duration_since(now).as_secs() as u32
         };
         let turn = if g.state == State::Betting
@@ -1089,7 +1087,7 @@ mod tests {
         let mut peers = [a, b];
         for _ in 0..200 {
             run(&mut t, &mut now, &mut peers, 1, true);
-            for p in peers.iter() {
+            for p in &peers {
                 let Some(v) = &p.view else { continue };
                 for (i, seat) in v.seats.iter().enumerate() {
                     if Some(i) != v.you && !seat.cards.is_empty() {
@@ -1235,7 +1233,7 @@ mod tests {
         t.handle(1, hello(2, None), now);
         match rx.try_recv() {
             Ok(ServerMsg::Goodbye(why)) => assert!(why.contains("too old"), "{}", why),
-            other => panic!("expected a goodbye, got {:?}", other),
+            other => panic!("expected a goodbye, got {other:?}"),
         }
         // A client that only speaks newer versions.
         let (tx, rx) = channel();
@@ -1247,7 +1245,7 @@ mod tests {
         );
         match rx.try_recv() {
             Ok(ServerMsg::Goodbye(why)) => assert!(why.contains("older holdem"), "{}", why),
-            other => panic!("expected a goodbye, got {:?}", other),
+            other => panic!("expected a goodbye, got {other:?}"),
         }
         t.flush(now);
         assert!(t.clients.is_empty());
@@ -1261,7 +1259,7 @@ mod tests {
         );
         match rx.try_recv() {
             Ok(ServerMsg::Welcome { version, .. }) => assert_eq!(version, PROTOCOL_VERSION),
-            other => panic!("expected a welcome, got {:?}", other),
+            other => panic!("expected a welcome, got {other:?}"),
         }
     }
 
@@ -1377,6 +1375,6 @@ mod tests {
         t.flush(now);
         host.read();
         let left = host.view.unwrap().turn_seconds_left.unwrap();
-        assert!((24..=25).contains(&left), "{} seconds left", left);
+        assert!((24..=25).contains(&left), "{left} seconds left");
     }
 }

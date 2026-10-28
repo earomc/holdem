@@ -9,7 +9,10 @@ use std::collections::BTreeMap;
 
 fn main() {
     let mut totals: BTreeMap<&'static str, Stats> = BTreeMap::new();
-    let names: Vec<String> = bot::DEFAULT_NAMES.iter().map(|s| s.to_string()).collect();
+    let names: Vec<String> = bot::DEFAULT_NAMES
+        .iter()
+        .map(std::string::ToString::to_string)
+        .collect();
     let games: u64 = std::env::var("GAMES")
         .ok()
         .and_then(|v| v.parse().ok())
@@ -78,7 +81,7 @@ fn main() {
             add(style, &f.stats);
         }
     }
-    for a in ARCHETYPES.iter() {
+    for a in &ARCHETYPES {
         let s = totals[a.personality.style];
         let x = s.features();
         println!(

@@ -427,7 +427,7 @@ fn oracle(totals: &[u32], live: &[bool], scores: &[Option<Score>], button: usize
         }
         let m = elig.iter().map(|&i| c[i]).min().unwrap();
         let pot: u32 = c.iter().map(|&x| x.min(m)).sum();
-        for x in c.iter_mut() {
+        for x in &mut c {
             *x -= (*x).min(m);
         }
         let best = elig.iter().filter_map(|&i| scores[i]).max();
@@ -494,16 +494,16 @@ fn passive_action(g: &Game, rng: &mut Rng) -> Action {
 
 fn check_settlement_against_oracle(g: &Game) {
     let totals = &g.last_totals;
-    let live: Vec<bool> = g.players.iter().map(|p| p.live()).collect();
+    let live: Vec<bool> = g.players.iter().map(holdem::game::Player::live).collect();
     let scores: Vec<Option<Score>> = g.players.iter().map(|p| p.score).collect();
     let expected = oracle(totals, &live, &scores, g.button);
     for (i, p) in g.players.iter().enumerate() {
         // final = start - contributed + payout
-        let got = p.chips as i64 - p.start_chips as i64 + totals[i] as i64;
+        let got = i64::from(p.chips) - i64::from(p.start_chips) + i64::from(totals[i]);
         assert_eq!(
-            got, expected[i] as i64,
-            "seat {} payout mismatch: totals {:?}, live {:?}, expected {:?}",
-            i, totals, live, expected
+            got,
+            i64::from(expected[i]),
+            "seat {i} payout mismatch: totals {totals:?}, live {live:?}, expected {expected:?}"
         );
     }
 }
@@ -549,7 +549,10 @@ fn shuffle_seats(g: &mut Game, rng: &mut Rng) {
     let seat = rng.below(n as u64) as usize;
     if g.players[seat].out && !g.players[seat].rebuy_pending && rng.chance(0.1) {
         let taken: Vec<String> = g.players.iter().map(|p| p.name.clone()).collect();
-        let names: Vec<String> = bot::DEFAULT_NAMES.iter().map(|s| s.to_string()).collect();
+        let names: Vec<String> = bot::DEFAULT_NAMES
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect();
         let (name, style) = bot::newcomer(&names, &taken, rng);
         let chips = g.rules.starting_chips;
         g.seat_player(seat, &name, false, style, chips).unwrap();
@@ -585,7 +588,7 @@ fn play_fuzz_game(seed: u64, players: usize, stack: u32, sb: u32, hpl: u32, pass
                     random_action(&g, &mut rng)
                 };
                 g.act(action)
-                    .unwrap_or_else(|e| panic!("{:?} was rejected: {}", action, e));
+                    .unwrap_or_else(|e| panic!("{action:?} was rejected: {e}"));
             }
             assert_eq!(
                 g.chips_in_play(),
@@ -608,7 +611,7 @@ fn play_fuzz_game(seed: u64, players: usize, stack: u32, sb: u32, hpl: u32, pass
     }
     if g.state == State::GameOver && g.contenders() == 1 {
         let w = g.players.iter().find(|p| p.contending()).unwrap();
-        assert_eq!(w.chips as u64, g.total_chips());
+        assert_eq!(u64::from(w.chips), g.total_chips());
     }
     // Places are 1, 2, 3, ... with no gaps or repeats, and only players who left have none.
     let standings = g.standings();
@@ -627,7 +630,7 @@ fn random_play_conserves_chips_and_matches_the_pot_oracle() {
         let hpl = [0, 5, 10][((seed / 3) % 3) as usize];
         total_hands += play_fuzz_game(seed, players, stack, sb, hpl, seed % 2 == 0);
     }
-    assert!(total_hands > 500, "only {} hands were played", total_hands);
+    assert!(total_hands > 500, "only {total_hands} hands were played");
 }
 
 #[test]
@@ -647,7 +650,7 @@ fn bots_can_play_whole_tournaments() {
                 break;
             }
             hands += 1;
-            assert!(hands < 3000, "tournament {} never ended", seed);
+            assert!(hands < 3000, "tournament {seed} never ended");
             let mut steps = 0;
             while matches!(g.state, State::Betting | State::Runout) {
                 steps += 1;

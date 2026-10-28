@@ -135,7 +135,7 @@ fn describe(x: &Features) -> String {
         b if b < 0.30 => "bluffs sometimes",
         _ => "bluffs often",
     };
-    format!("{}, {}, {}", hands, style, bluff)
+    format!("{hands}, {style}, {bluff}")
 }
 
 /// `None` until the player has played `min_hands` counted hands
@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     fn every_centroid_is_its_own_closest_match() {
-        for a in ARCHETYPES.iter() {
+        for a in &ARCHETYPES {
             assert_eq!(closest(&a.measured), a.personality.style);
             assert_eq!(rank(&a.measured)[0].1, 100);
         }
