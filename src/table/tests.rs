@@ -277,6 +277,69 @@ fn an_answer_to_an_earlier_turn_is_ignored() {
 }
 
 #[test]
+fn after_a_person_acts_the_next_bot_waits_a_full_step() {
+    let mut now = Instant::now();
+    let s = TableSettings {
+        speed_ms: 1000,
+        ..settings()
+    };
+    let mut t = Table::new(s, Rng::seeded(21));
+    let mut me = join(&mut t, 1, "Me", true, now);
+    t.handle(1, ClientMsg::Ready, now);
+    let mut checked = 0;
+    for _ in 0..2000 {
+        now += Duration::from_millis(50);
+        t.tick(now);
+        t.flush(now);
+        me.read();
+        let Some(v) = me.view.clone() else { continue };
+        if v.state == State::HandOver && !v.you_ready {
+            t.handle(1, ClientMsg::Ready, now);
+            continue;
+        }
+        let Some(l) = v.legal else { continue };
+        // Think for a while, longer than a step, then act.
+        now += Duration::from_secs(5);
+        let action = if l.can_check {
+            Action::Check
+        } else {
+            Action::Call
+        };
+        t.handle(
+            1,
+            ClientMsg::Act {
+                action,
+                turn: v.turn,
+            },
+            now,
+        );
+        let g = t.game().unwrap();
+        if g.state != State::Betting || g.players[g.to_act].is_human {
+            continue;
+        }
+        let before = g.action_count;
+        t.tick(now + Duration::from_millis(100));
+        assert_eq!(
+            t.game().unwrap().action_count,
+            before,
+            "the bot moved at once"
+        );
+        t.tick(now + Duration::from_millis(1000));
+        assert_ne!(
+            t.game().unwrap().action_count,
+            before,
+            "the bot never moved"
+        );
+        now += Duration::from_millis(1000);
+        checked += 1;
+        if checked == 3 {
+            return;
+        }
+    }
+    panic!("only {checked} turns were followed by a bot");
+}
+
+#[test]
 fn duplicate_names_get_a_number() {
     let now = Instant::now();
     let mut t = Table::new(settings(), Rng::seeded(6));
@@ -286,6 +349,12 @@ fn duplicate_names_get_a_number() {
     assert!(
         msgs.iter()
             .any(|m| matches!(m, ServerMsg::Welcome { name, .. } if name == "Ann 2"))
+    );
+    let mut c = join(&mut t, 3, "ANN", false, now);
+    assert!(
+        c.read()
+            .iter()
+            .any(|m| matches!(m, ServerMsg::Welcome { name, .. } if name == "ANN 3"))
     );
 }
 

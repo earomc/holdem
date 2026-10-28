@@ -8,6 +8,7 @@ use ratatui::text::{Line, Span};
 use holdem::game::{State, chips_text, ordinal};
 use holdem::protocol::{SeatView, TableView};
 
+use crate::ui::avatar::avatar;
 use crate::ui::boxed;
 use crate::ui::cards::{cards_line, hidden_line};
 use crate::ui::style::{bold, dim, framed, green};
@@ -34,7 +35,12 @@ pub(super) fn seat_title(v: &TableView, seat: usize) -> Line<'static> {
     if s.vacant {
         return Line::from(Span::styled(" empty ", dim()));
     }
-    let mut spans = vec![Span::raw(" "), Span::styled(s.name.clone(), bold())];
+    let mut spans = vec![
+        Span::raw(" "),
+        avatar(&s.name),
+        Span::raw(" "),
+        Span::styled(s.name.clone(), bold()),
+    ];
     if !s.connected {
         spans.push(Span::styled(" (away)", Style::new().fg(Color::LightRed)));
     }

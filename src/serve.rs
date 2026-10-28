@@ -324,7 +324,7 @@ mod tests {
             "command line          --port 7777",
             "\"Hold'em table\"",
             "Ava, Ben, Chloe",
-            "Normal (650 ms per bot move)",
+            "Normal (1200 ms per bot move)",
             "1,500",
             "10/20, up every 8 hands",
             "on: 1/8 of the big blind",

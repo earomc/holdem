@@ -256,6 +256,38 @@ fn all_in_runout_takes_four_steps_and_pays_the_winner() {
     assert_eq!(standings[1].place, Some(2));
 }
 
+#[test]
+fn the_result_names_the_kicker_when_it_decides() {
+    // Both have a pair of kings on K♠ 7♦ 2♥ 9♣ 4♠: seat 0's ace beats seat 1's queen.
+    let mut g = game(2, &[500, 500], 0, 10, 0);
+    g.start_hand_with_deck(stacked("Kc Kd Qd Ah 3d Ks 7d 2h 3h 9c 3s 4s"));
+    g.act(Action::AllIn).unwrap();
+    g.act(Action::Call).unwrap();
+    while g.state == State::Runout {
+        g.runout_step();
+    }
+    assert_eq!(chips(&g), vec![1000, 0]);
+    assert!(
+        g.result_lines[0].ends_with("with Pair of Kings, Ace kicker"),
+        "{}",
+        g.result_lines[0]
+    );
+
+    // Aces against kings: the pairs decide, no kicker is named.
+    let mut g = game(2, &[500, 500], 0, 10, 0);
+    g.start_hand_with_deck(stacked("Kc As Kd Ah 3d 2c 7d 9h 3h Js 3s 4c"));
+    g.act(Action::AllIn).unwrap();
+    g.act(Action::Call).unwrap();
+    while g.state == State::Runout {
+        g.runout_step();
+    }
+    assert!(
+        g.result_lines[0].ends_with("with Pair of Aces"),
+        "{}",
+        g.result_lines[0]
+    );
+}
+
 /// Seat 0: A♦ A♥, seat 1: K♣ K♥, seat 2: Q♣ J♦, board A♣ K♦ 9♥ 5♠ 2♣ (button 0, three players).
 const SIDE_POT_DECK: &str = "Kc Qc Ad Kh Jd Ah 3d Ac Kd 9h 4d 5s 6d 2c";
 

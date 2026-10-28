@@ -213,9 +213,10 @@ impl Default for Config {
             network: NetworkConfig::default(),
             bots: BotConfig::default(),
             speeds: vec![
-                speed("Slow", 1100),
-                speed(DEFAULT_SPEED, 650),
-                speed("Fast", 220),
+                speed("Slow", 2000),
+                speed(DEFAULT_SPEED, 1200),
+                speed("Fast", 600),
+                speed("Turbo", 200),
             ],
             tables: vec![TableConfig::default()],
         }
@@ -639,9 +640,9 @@ seats = 4
         assert!(!s.allow_win_chance);
         assert_eq!(s.bot_samples, 99);
         assert_eq!(s.stats_min_stack_bb, 20);
-        assert_eq!(s.speed_ms, 220);
+        assert_eq!(s.speed_ms, 600);
         assert_eq!(s.turn_seconds, 30);
-        let solo = c.table_settings(&c.tables[0], 220, false);
+        let solo = c.table_settings(&c.tables[0], 600, false);
         assert_eq!((solo.turn_seconds, solo.next_hand_seconds), (0, 0));
     }
 }

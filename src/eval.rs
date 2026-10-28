@@ -260,6 +260,24 @@ pub fn describe(score: Score) -> String {
     }
 }
 
+/// The kicker that beat `loser` when both hands read the same in words
+/// ([`describe`] names only the pair, the trips and so on): the winner's
+/// first rank that is better than the loser's. `None` if the categories
+/// differ or the named ranks already decide.
+pub fn deciding_kicker(winner: Score, loser: Score) -> Option<u8> {
+    let kind = category(winner);
+    if kind != category(loser) {
+        return None;
+    }
+    let named = match kind {
+        Category::TwoPair | Category::FullHouse => 2,
+        _ => 1,
+    };
+    let (w, l) = (tiebreakers(winner), tiebreakers(loser));
+    let i = (0..5).find(|&i| w[i] != l[i])?;
+    (i >= named && w[i] > l[i]).then_some(w[i])
+}
+
 /// Describes two hole cards, e.g. "Pocket Kings" or "Ace-King suited".
 pub fn describe_hole(a: Card, b: Card) -> String {
     let (hi, lo) = if a.rank >= b.rank { (a, b) } else { (b, a) };
@@ -394,6 +412,37 @@ mod tests {
         assert_eq!(score("Ks Kh 2c 3d 4h 5s 6c"), score("Qs Qh 2c 3d 4h 5s 6c"));
         // Flush: compare the whole five card flush.
         assert!(score("As Ks 9s 5s 3s 2d 2h") > score("As Ks 9s 5s 2s 4d 4h"));
+    }
+
+    #[test]
+    fn the_deciding_kicker() {
+        let board = "Kh Kd 7c 4s 2h";
+        let with = |hole: &str| score(&format!("{hole} {board}"));
+        assert_eq!(deciding_kicker(with("As 3d"), with("Qs 3c")), Some(14));
+        // Same top kicker: the next one decides.
+        assert_eq!(
+            deciding_kicker(score("Kh Kd Ac 9s 2h"), score("Ks Kc Ad 8h 2d")),
+            Some(9)
+        );
+        assert_eq!(
+            deciding_kicker(with("Ac 7d"), with("Qs Qc")),
+            None,
+            "the pairs decide"
+        );
+        assert_eq!(
+            deciding_kicker(with("Kc 3d"), with("As 3c")),
+            None,
+            "trips beat a pair"
+        );
+        assert_eq!(
+            deciding_kicker(score("Ah Ad 8c 8s Kh"), score("As Ac 8d 8h Qd")),
+            Some(13)
+        );
+        assert_eq!(
+            deciding_kicker(score("Ah Ad 9c 9s 2h"), score("As Ac 8d 8h Kd")),
+            None
+        );
+        assert_eq!(deciding_kicker(with("As 3d"), with("Ad 3c")), None, "a tie");
     }
 
     #[test]

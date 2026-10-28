@@ -168,9 +168,17 @@ pub fn roster_from(names: &[String], count: usize, rng: &mut Rng) -> Vec<(String
         .collect()
 }
 
+/// Whether someone in `taken` already goes by `name`. Case does not count:
+/// "ava" and "Ava" look like the same player.
+pub fn name_taken(taken: &[String], name: &str) -> bool {
+    taken
+        .iter()
+        .any(|t| t.to_lowercase() == name.to_lowercase())
+}
+
 /// A random name from `names` that nobody in `taken` uses yet.
 pub fn unused_name(names: &[String], taken: &[String], rng: &mut Rng) -> String {
-    let free: Vec<&String> = names.iter().filter(|n| !taken.contains(n)).collect();
+    let free: Vec<&String> = names.iter().filter(|n| !name_taken(taken, n)).collect();
     if !free.is_empty() {
         return free[rng.below(free.len() as u64) as usize].clone();
     }
@@ -181,7 +189,7 @@ pub fn unused_name(names: &[String], taken: &[String], rng: &mut Rng) -> String 
     };
     (2..)
         .map(|k| format!("{base} {k}"))
-        .find(|candidate| !taken.contains(candidate))
+        .find(|candidate| !name_taken(taken, candidate))
         .expect("an unused number exists")
 }
 
@@ -230,5 +238,16 @@ mod tests {
         let taken = vec!["Zed".to_string()];
         let (name, _) = newcomer(&names, &taken, &mut rng);
         assert_ne!(name, "Zed");
+    }
+
+    #[test]
+    fn names_that_differ_only_in_case_are_taken() {
+        let mut rng = Rng::seeded(3);
+        let names = vec!["Ava".to_string(), "Ben".to_string()];
+        let taken = vec!["ava".to_string()];
+        for _ in 0..20 {
+            assert_eq!(unused_name(&names, &taken, &mut rng), "Ben");
+        }
+        assert!(name_taken(&taken, "AVA"));
     }
 }

@@ -51,9 +51,7 @@ fn setup_row_text(app: &App, row: SetupRow) -> (&'static str, String, String) {
             } else {
                 format!("{}  (you + {} bots)", s.seats, s.seats - 1)
             },
-            format!(
-                "How many seats the table has ({MIN_PLAYERS} to {MAX_PLAYERS})."
-            ),
+            format!("How many seats the table has ({MIN_PLAYERS} to {MAX_PLAYERS})."),
         ),
         SetupRow::FillWithBots => (
             "Free seats",
@@ -62,7 +60,12 @@ fn setup_row_text(app: &App, row: SetupRow) -> (&'static str, String, String) {
             } else {
                 "Left empty (people only)".to_string()
             },
-            "Seats that no person takes can be given to computer players.".to_string(),
+            if s.fill_with_bots {
+                "Seats that no person takes get computer players."
+            } else {
+                "Only people play: the table has as many players as there are people."
+            }
+            .to_string(),
         ),
         SetupRow::Chips => (
             "Starting chips",
@@ -79,15 +82,25 @@ fn setup_row_text(app: &App, row: SetupRow) -> (&'static str, String, String) {
             (
                 "Blinds go up",
                 r.levels_text(),
-                format!(
-                    "Rising blinds push the game towards an end (each level is {low}% to {high}% higher)."
-                ),
+                if r.hands_per_level == 0 {
+                    "The blinds stay at their starting size the whole game.".to_string()
+                } else {
+                    format!(
+                        "Rising blinds push the game towards an end (each level is {low}% to \
+                         {high}% higher)."
+                    )
+                },
             )
         }
         SetupRow::HandLimit => (
             "Hand limit",
             r.hand_limit_text(),
-            "End the game after this many hands: the biggest stack wins.".to_string(),
+            if r.hand_limit == 0 {
+                "The game goes on until one player has all the chips."
+            } else {
+                "The game ends after this many hands: the biggest stack wins."
+            }
+            .to_string(),
         ),
         SetupRow::Antes => (
             "Antes",
@@ -108,18 +121,34 @@ fn setup_row_text(app: &App, row: SetupRow) -> (&'static str, String, String) {
         SetupRow::Rebuys => (
             "Rebuys",
             capitalized(&r.rebuys_text()),
-            "Busted players may buy back in while rebuys are open.".to_string(),
+            if r.rebuy_levels == 0 {
+                "A player who loses all their chips is out."
+            } else {
+                "A player who loses all their chips may buy back in; you are asked after the hand."
+            }
+            .to_string(),
         ),
         SetupRow::Button => (
             "Button rule",
             capitalized(r.button_text()),
-            "Dead button: the big blind moves exactly one player each hand, even when players leave."
-                .to_string(),
+            if r.dead_button {
+                "The big blind moves exactly one seat each hand, so nobody skips it when players \
+                 leave; the button or small blind may then sit on an empty seat."
+            } else {
+                "The button goes to the next player each hand."
+            }
+            .to_string(),
         ),
         SetupRow::Showdown => (
             "Showdown",
             capitalized(r.showdown_text()),
-            "Losers may muck: players who cannot win throw their cards away unseen.".to_string(),
+            if r.muck_losers {
+                "Hands are shown in turn, and a player already beaten throws their cards away \
+                 unseen (all-in hands always show)."
+            } else {
+                "Every hand still in at the end is turned up."
+            }
+            .to_string(),
         ),
         SetupRow::Fluctuation => (
             "Players come and go",
@@ -134,9 +163,13 @@ fn setup_row_text(app: &App, row: SetupRow) -> (&'static str, String, String) {
                 "Not allowed"
             }
             .to_string(),
-            format!(
-                "Whether players may turn on the win-chance hint (in the settings, key {settings})."
-            ),
+            if s.allow_win_chance {
+                format!(
+                    "Players may turn on the win-chance hint (in the settings, key {settings})."
+                )
+            } else {
+                "Nobody at this table can turn on the win-chance hint.".to_string()
+            },
         ),
     }
 }
@@ -219,4 +252,33 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
     };
     let (rect, lines) = screen_box(area, 72, height, body, lines);
     frame.render_widget(boxed(lines, title_block(title, rect), rect), rect);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sound::Sound;
+    use holdem::config::Config;
+
+    #[test]
+    fn every_explanation_reads_cleanly_for_every_value() {
+        let mut app = App::new(Config::default(), Some(1), Sound::new(true));
+        for flip in [false, true] {
+            let r = &mut app.setup.rules;
+            r.dead_button = flip;
+            r.muck_losers = flip;
+            r.antes = flip;
+            r.straddle = flip;
+            r.hands_per_level = if flip { 0 } else { 8 };
+            r.hand_limit = if flip { 0 } else { 50 };
+            r.rebuy_levels = if flip { 0 } else { 2 };
+            app.setup.fill_with_bots = flip;
+            app.setup.fluctuation = flip;
+            app.setup.allow_win_chance = flip;
+            for row in app.setup.rows() {
+                let (label, _, about) = setup_row_text(&app, row);
+                assert!(!about.contains("  "), "{label}: {about:?}");
+            }
+        }
+    }
 }

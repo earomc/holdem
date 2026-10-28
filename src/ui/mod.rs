@@ -13,6 +13,7 @@ use self::style::{framed, yellow};
 use self::text::fit;
 use crate::app::{App, Screen};
 
+mod avatar;
 mod cards;
 mod choose;
 mod join;

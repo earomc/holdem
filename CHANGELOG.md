@@ -6,6 +6,24 @@ All notable changes to holdem. The format follows
 
 ## [Unreleased]
 
+### Added
+- Every player has a colored symbol next to their name, on the seats and in the lobby. It
+  follows from the name, so the same name always gets the same symbol.
+- When a kicker decides a pot, the result says so: "wins the pot (840) with Pair of Kings,
+  Ace kicker".
+
+### Changed
+- Slower game speeds: Slow 2000 ms, Normal 1200 ms, Fast 600 ms, and a new Turbo at 200 ms.
+- The explanation under a setup row follows the value shown: switch between moving and dead
+  button, or between the showdown rules, and it says what that choice does. *Never*, *no limit*
+  and *off* are explained too.
+- Names that differ only in case count as the same: no bot is called "Ava" next to "ava", and
+  a second "ANN" joining after "Ann" becomes "ANN 2".
+
+### Fixed
+- After you act, the next bot waits a full step, as it does after another bot. Before, it moved
+  at once.
+
 ## [0.8.0] - 2026-10-28
 
 ### Added

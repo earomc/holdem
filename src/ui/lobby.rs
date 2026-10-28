@@ -7,6 +7,7 @@ use ratatui::text::{Line, Span};
 
 use holdem::game::chips_text;
 
+use super::avatar::avatar;
 use super::style::{bold, centered, cyan, dim, green, reminder};
 use super::text::wrap_text;
 use super::{boxed, screen_box, title_block};
@@ -80,7 +81,9 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
                 let you = if p.you { "  (you)" } else { "" };
                 let style = if p.ready { green() } else { Style::new() };
                 lines.push(Line::from(vec![
-                    Span::raw(format!("   {:<18}", p.name)),
+                    Span::raw("   "),
+                    avatar(&p.name),
+                    Span::raw(format!(" {:<18}", p.name)),
                     Span::styled(mark, style),
                     Span::styled(you, dim()),
                 ]));

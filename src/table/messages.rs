@@ -29,7 +29,7 @@ impl Table {
         match msg {
             // Choosing a table is the server's business, before a table sees the client.
             ClientMsg::Hello { .. } | ClientMsg::ChooseTable(_) => {}
-            ClientMsg::Act { action, turn } => self.act(id, seat, action, turn),
+            ClientMsg::Act { action, turn } => self.act(id, seat, action, turn, now),
             ClientMsg::Ready => self.ready(id, seat, now),
             ClientMsg::Rebuy(yes) => {
                 if let (Some(g), Some(s)) = (self.game.as_mut(), seat) {
@@ -77,7 +77,14 @@ impl Table {
         }
     }
 
-    pub(super) fn act(&mut self, id: ClientId, seat: Option<usize>, action: Action, turn: u64) {
+    pub(super) fn act(
+        &mut self,
+        id: ClientId,
+        seat: Option<usize>,
+        action: Action,
+        turn: u64,
+        now: Instant,
+    ) {
         let Some(g) = self.game.as_mut() else {
             return;
         };
@@ -89,8 +96,10 @@ impl Table {
             self.notice(id, "It is not your turn.");
             return;
         }
-        if let Err(e) = g.act(action) {
-            self.notice(id, e);
+        match g.act(action) {
+            // The next bot waits a full step, as it would after another bot.
+            Ok(_) => self.next_step = now + self.delay(),
+            Err(e) => self.notice(id, e),
         }
     }
 

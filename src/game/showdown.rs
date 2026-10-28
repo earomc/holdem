@@ -1,6 +1,6 @@
 //! The end of a hand: returning uncalled bets, showing hands and paying the pots.
 
-use super::pots::{Award, award_pots, compute_pots};
+use super::pots::{Award, Pot, award_pots, compute_pots};
 use super::{Game, GameEvent, Player, State};
 use crate::card::cards_text;
 use crate::eval::{self, Score};
@@ -130,12 +130,12 @@ impl Game {
         let awards = award_pots(&pots, &scores, self.button);
         let many = awards.len() > 1;
         let mut lines = Vec::new();
-        for (k, award) in awards.iter().enumerate() {
+        for (k, (award, pot)) in awards.iter().zip(&pots).enumerate() {
             for (&w, &share) in award.winners.iter().zip(award.shares.iter()) {
                 self.players[w].chips += share;
                 self.players[w].payout += share;
             }
-            lines.push(self.award_text(k, many, award, contested));
+            lines.push(self.award_text(k, many, award, pot, contested));
         }
         for line in &lines {
             self.log(line.clone());
@@ -145,7 +145,14 @@ impl Game {
     }
 
     /// The log line for pot number `k` (of several if `many`).
-    fn award_text(&self, k: usize, many: bool, award: &Award, contested: bool) -> String {
+    fn award_text(
+        &self,
+        k: usize,
+        many: bool,
+        award: &Award,
+        pot: &Pot,
+        contested: bool,
+    ) -> String {
         let label = if !many {
             "the pot".to_string()
         } else if k == 0 {
@@ -160,7 +167,21 @@ impl Game {
             .collect();
         let how = if contested {
             let score = self.players[award.winners[0]].score.unwrap_or(0);
-            format!(" with {}", eval::describe(score))
+            // The best hand shown against it: mucked cards stay secret.
+            let runner_up = pot
+                .eligible
+                .iter()
+                .filter(|i| !award.winners.contains(i) && self.players[**i].shown)
+                .filter_map(|&i| self.players[i].score)
+                .max();
+            match runner_up.and_then(|r| eval::deciding_kicker(score, r)) {
+                Some(rank) => format!(
+                    " with {}, {} kicker",
+                    eval::describe(score),
+                    eval::rank_name(rank)
+                ),
+                None => format!(" with {}", eval::describe(score)),
+            }
         } else {
             " (everyone else folded)".to_string()
         };

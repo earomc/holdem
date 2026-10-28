@@ -275,6 +275,25 @@ fn a_solo_game_renders_from_start_to_finish() {
 }
 
 #[test]
+fn the_setup_screen_explains_the_value_that_is_shown() {
+    let mut app = App::new(fast_config(), Some(5), Sound::new(true));
+    press(&mut app, KeyCode::Enter); // Play against bots
+    app.setup.row = app
+        .setup
+        .rows()
+        .iter()
+        .position(|r| *r == crate::app::SetupRow::Button)
+        .unwrap();
+    let moving = screen_text(&app, 100, 30);
+    assert!(moving.contains("The button goes to the next player each hand."));
+    assert!(!moving.contains("empty seat"));
+    press(&mut app, KeyCode::Right);
+    let dead = screen_text(&app, 100, 30);
+    assert!(dead.contains("The big blind moves exactly one seat each hand"));
+    assert!(!dead.contains("The button goes to the next player"));
+}
+
+#[test]
 fn a_hosted_game_renders_the_lobby_and_the_table() {
     let mut app = App::new(fast_config(), Some(4), Sound::new(true));
     app.menu_row = 1; // Host a network game

@@ -3,6 +3,7 @@
 use std::sync::mpsc::Sender;
 
 use super::{Client, ClientId, Table, TableEvent};
+use crate::bot;
 use crate::protocol::{
     APP_VERSION, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION, ServerMsg, clean_name, negotiate,
 };
@@ -97,7 +98,7 @@ impl Table {
                 .collect();
             let mut unique = wanted.clone();
             let mut k = 2;
-            while taken.contains(&unique) {
+            while bot::name_taken(&taken, &unique) {
                 unique = format!("{wanted} {k}");
                 k += 1;
             }
