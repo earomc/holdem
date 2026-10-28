@@ -7,11 +7,12 @@ use ratatui::text::Line;
 
 use holdem::protocol::TableView;
 
+use super::hands::hands_view;
 use super::log::log_view;
 use super::popups;
 use super::style::{centered, framed, key_for};
 use super::text::text_width;
-use crate::app::App;
+use crate::app::{App, InfoTab};
 use crate::keys::{Cmd, Place};
 use crate::session::Kind;
 use crate::ui::{boxed, one_line, plain};
@@ -159,8 +160,15 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
     {
         let inner_h = log_area.height.saturating_sub(2) as usize;
         let inner_w = log_area.width.saturating_sub(2) as usize;
-        let (lines, _) = log_view(&session.log, inner_h, inner_w, 0);
-        let block = framed(Line::from(" Log (L: full log) "), Color::DarkGray);
+        // The log tab you looked at last in the game info window.
+        let (lines, title) = if app.side_tab == InfoTab::YourHands {
+            let (lines, _) = hands_view(&session.my_hands, inner_h, inner_w, 0);
+            (lines, " Your hands (L: game info) ")
+        } else {
+            let (lines, _) = log_view(&session.log, inner_h, inner_w, 0);
+            (lines, " Log (L: game info) ")
+        };
+        let block = framed(Line::from(title), Color::DarkGray);
         frame.render_widget(boxed(lines, block, log_area), log_area);
     }
 

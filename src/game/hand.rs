@@ -139,6 +139,8 @@ impl Game {
             p.last_action.clear();
             p.played_this_hand = false;
             p.raised_this_hand = false;
+            p.folded_on = None;
+            p.bluffed_this_hand = false;
             // Short stacks must play push-or-fold whatever their style: not counted.
             p.tracked = p.in_hand && u64::from(p.chips) >= deep;
             if p.tracked {

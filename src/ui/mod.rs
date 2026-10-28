@@ -16,6 +16,7 @@ use crate::app::{App, Screen};
 mod avatar;
 mod cards;
 mod choose;
+mod hands;
 mod join;
 mod lobby;
 mod log;
@@ -46,11 +47,8 @@ pub fn draw(frame: &mut Frame, app: &App) {
     if app.show_settings {
         popups::settings(frame, app, area);
     }
-    if app.show_profile {
-        popups::profile(frame, app, area);
-    }
-    if app.show_log {
-        popups::log(frame, app, area);
+    if app.info.is_some() {
+        popups::info(frame, app, area);
     }
     if app.show_help {
         popups::help(frame, app, area);

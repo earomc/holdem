@@ -194,7 +194,11 @@ impl Game {
                 is_human: p.is_human,
                 style: p.personality.style.to_string(),
                 chips: p.chips,
-                status: format!("{} chips", chips_text(p.chips)),
+                status: if p.joined > 1 {
+                    format!("{} chips (from hand {})", chips_text(p.chips), p.joined)
+                } else {
+                    format!("{} chips", chips_text(p.chips))
+                },
                 stats: p.stats,
             });
         }
@@ -207,7 +211,7 @@ impl Game {
                 is_human: f.is_human,
                 style: f.style.clone(),
                 chips: 0,
-                status: format!("eliminated in hand {}", f.hand),
+                status: format!("out after {}", hands_played(f)),
                 stats: f.stats,
             });
         }
@@ -218,10 +222,50 @@ impl Game {
                 is_human: f.is_human,
                 style: f.style.clone(),
                 chips: f.chips,
-                status: format!("left in hand {} with {}", f.hand, chips_text(f.chips)),
+                status: format!("left after {}, {}", hands_played(f), chips_text(f.chips)),
                 stats: f.stats,
             });
         }
         rows
+    }
+}
+
+/// "20 hands (12–31)": how long a player who is gone was at the table.
+fn hands_played(f: &Finish) -> String {
+    if f.hand < f.joined {
+        return "no hands".to_string();
+    }
+    let first = f.joined.max(1);
+    match f.hand - first + 1 {
+        1 => format!("1 hand (hand {})", f.hand),
+        n => format!("{n} hands ({first}–{})", f.hand),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::stats::Stats;
+
+    fn gone(joined: u32, hand: u32) -> Finish {
+        Finish {
+            name: "Zed".to_string(),
+            is_human: false,
+            style: String::new(),
+            stats: Stats::default(),
+            chips: 0,
+            left: false,
+            order: 1,
+            hand,
+            joined,
+        }
+    }
+
+    #[test]
+    fn hands_played_counts_from_the_hand_they_joined() {
+        assert_eq!(hands_played(&gone(3, 6)), "4 hands (3–6)");
+        assert_eq!(hands_played(&gone(1, 31)), "31 hands (1–31)");
+        assert_eq!(hands_played(&gone(5, 5)), "1 hand (hand 5)");
+        assert_eq!(hands_played(&gone(8, 7)), "no hands");
     }
 }

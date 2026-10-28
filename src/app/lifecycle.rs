@@ -104,12 +104,13 @@ impl App {
 
     /// Leaves the current game and shows the main menu.
     pub(super) fn return_to_menu(&mut self) {
+        // A game left early counts as far as it went.
+        self.save_game_stats();
         self.session = None;
         self.screen = Screen::Menu;
         self.raise = None;
         self.hint = None;
-        self.show_log = false;
-        self.show_profile = false;
+        self.info = None;
         self.all_in_armed = false;
     }
 
@@ -159,6 +160,7 @@ impl App {
             if next == Screen::Over {
                 self.raise = None;
                 self.all_in_armed = false;
+                self.save_game_stats();
             }
             self.screen = next;
         }

@@ -25,7 +25,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::card::Card;
-use crate::game::{Action, GameEvent, Legal, Rules, Standing, State, Street};
+use crate::game::{Action, GameEvent, HandResult, Legal, Rules, Standing, State, Street};
 use crate::stats::Stats;
 
 /// The newest protocol version this program speaks. Version 4 added several
@@ -284,6 +284,8 @@ pub struct TableView {
     pub standings: Vec<Standing>,
     /// Your statistics (for the style estimate).
     pub your_stats: Stats,
+    /// How your last settled hand went (it stays until the next one is settled).
+    pub your_result: Option<HandResult>,
     /// Seconds left for the player to act, when there is a time limit.
     pub turn_seconds_left: Option<u32>,
     /// Seconds until the next hand starts by itself.

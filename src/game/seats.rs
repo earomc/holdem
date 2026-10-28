@@ -24,6 +24,7 @@ impl Game {
             return Err("that seat is taken".to_string());
         }
         self.players[seat] = Player::new(name.to_string(), is_human, personality, chips);
+        self.players[seat].joined = self.hand_no + 1;
         self.total_chips += u64::from(chips);
         if self.hand_no > 0 {
             self.log(format!(

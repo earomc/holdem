@@ -11,8 +11,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::bot::ARCHETYPES;
 
-/// Hands needed before an estimate is shown (default; `client.style_min_hands`).
+/// Hands needed before the estimate is reliable (default; `client.style_min_hands`).
 pub const MIN_HANDS: u32 = 15;
+/// Hands needed for a first, rough estimate.
+pub const ROUGH_HANDS: u32 = 5;
 /// Only hands started with at least this many big blinds are counted: with a
 /// short stack everybody has to play push-or-fold, whatever their style
 /// (default; `game.style_min_stack_bb`).
@@ -52,6 +54,17 @@ pub struct Features {
 }
 
 impl Stats {
+    /// Adds another set of counts (another game) to these.
+    pub fn add(&mut self, other: &Stats) {
+        self.hands += other.hands;
+        self.vpip += other.vpip;
+        self.pfr += other.pfr;
+        self.bets += other.bets;
+        self.calls += other.calls;
+        self.postflop_bets += other.postflop_bets;
+        self.bluffs += other.bluffs;
+    }
+
     pub fn features(&self) -> Features {
         let ratio = |a: u32, b: u32| if b == 0 { 0.0 } else { a as f32 / b as f32 };
         Features {
@@ -93,6 +106,8 @@ pub struct Profile {
     pub ranking: Vec<(&'static str, u32)>,
     /// "Tight" / "Loose" etc. in plain words.
     pub summary: String,
+    /// Based on fewer hands than make a reliable estimate.
+    pub rough: bool,
 }
 
 /// The archetype whose measured statistics are nearest to `features`.
@@ -138,10 +153,12 @@ fn describe(x: &Features) -> String {
     format!("{hands}, {style}, {bluff}")
 }
 
-/// `None` until the player has played `min_hands` counted hands
+/// `None` until the player has played [`ROUGH_HANDS`] counted hands (or
+/// `min_hands`, if that is fewer); rough until they have played `min_hands`
 /// ([`MIN_HANDS`] unless configured otherwise).
 pub fn profile(stats: &Stats, min_hands: u32) -> Option<Profile> {
-    if stats.hands < min_hands.max(1) {
+    let min_hands = min_hands.max(1);
+    if stats.hands < ROUGH_HANDS.min(min_hands) {
         return None;
     }
     let features = stats.features();
@@ -149,6 +166,7 @@ pub fn profile(stats: &Stats, min_hands: u32) -> Option<Profile> {
         features,
         ranking: rank(&features),
         summary: describe(&features),
+        rough: stats.hands < min_hands,
     })
 }
 
@@ -167,10 +185,17 @@ mod tests {
     #[test]
     fn too_few_hands_give_no_profile() {
         let s = Stats {
-            hands: MIN_HANDS - 1,
+            hands: ROUGH_HANDS - 1,
             ..Stats::default()
         };
         assert!(profile(&s, MIN_HANDS).is_none());
+        let s = Stats {
+            hands: ROUGH_HANDS,
+            ..Stats::default()
+        };
+        assert!(profile(&s, MIN_HANDS).unwrap().rough);
+        assert!(!profile(&s, ROUGH_HANDS).unwrap().rough);
+        assert!(!profile(&s, 2).unwrap().rough, "a lower setting wins");
         let s = Stats {
             hands: 100,
             vpip: 70,
@@ -181,8 +206,25 @@ mod tests {
             bluffs: 20,
         };
         let p = profile(&s, MIN_HANDS).unwrap();
+        assert!(!p.rough);
         assert_eq!(p.ranking[0].0, "Maniac");
         assert!(p.summary.contains("very loose"));
+    }
+
+    #[test]
+    fn games_add_up() {
+        let mut all = Stats {
+            hands: 10,
+            bluffs: 1,
+            ..Stats::default()
+        };
+        all.add(&Stats {
+            hands: 5,
+            vpip: 2,
+            bluffs: 1,
+            ..Stats::default()
+        });
+        assert_eq!((all.hands, all.vpip, all.bluffs), (15, 2, 2));
     }
 
     #[test]

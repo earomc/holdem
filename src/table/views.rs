@@ -189,6 +189,7 @@ impl Table {
                 Vec::new()
             },
             your_stats: you.map(|s| g.players[s].stats).unwrap_or_default(),
+            your_result: you.and_then(|s| g.players[s].last_result.clone()),
             turn_seconds_left: seconds.0,
             next_hand_seconds_left: seconds.1,
             ready: (ready_count, voters.len()),

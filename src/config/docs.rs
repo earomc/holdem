@@ -34,11 +34,12 @@ pub(super) const DOCS: &[(&str, &str)] = &[
     ),
     (
         "client.log_lines",
-        "Hand log lines kept for the log window.",
+        "Table log lines kept for the game info window.",
     ),
     (
         "client.style_min_hands",
-        "Counted hands before your playing style is estimated.",
+        "Counted hands before the estimate of your playing style is reliable (a rough\n\
+         guess shows from 5).",
     ),
     ("client.sound", "Sound effects."),
     ("client.sound.volume", "0 (off) to 100."),

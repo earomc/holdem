@@ -4,7 +4,7 @@
 use holdem::bot;
 use holdem::card::{Deck, Rng, parse_cards};
 use holdem::eval::Score;
-use holdem::game::{Action, Game, GameEvent, HUMAN, Rules, State, Street};
+use holdem::game::{Action, Game, GameEvent, HUMAN, Outcome, Rules, State, Street};
 
 fn game(n: usize, stacks: &[u32], button: usize, sb: u32, hpl: u32) -> Game {
     game_with(n, stacks, button, sb, hpl, Rules::default())
@@ -257,6 +257,29 @@ fn all_in_runout_takes_four_steps_and_pays_the_winner() {
 }
 
 #[test]
+fn a_bet_without_a_pair_that_takes_the_pot_is_a_bluff() {
+    // Seat 1: 7♣ 2♦, seat 0: K♠ Q♠; the flop 9♥ 5♣ 3♦ gives nobody a pair.
+    let mut g = game(2, &[1000, 1000], 0, 10, 0);
+    g.start_hand_with_deck(stacked("7c Ks 2d Qs 4h 9h 5c 3d 8s Jc 6s Td"));
+    g.act(Action::Call).unwrap(); // seat 0, the button, limps
+    g.act(Action::Check).unwrap(); // seat 1
+    assert_eq!(g.street, Street::Flop);
+    assert_eq!(g.to_act, 1);
+    g.act(Action::RaiseTo(40)).unwrap();
+    g.act(Action::Fold).unwrap();
+    assert_eq!(g.state, State::HandOver);
+    let bluff = g.players[1].last_result.clone().unwrap();
+    assert_eq!(bluff.outcome, Outcome::WonUncontested);
+    assert!(bluff.bluffed);
+    assert_eq!(bluff.net, 20);
+    assert_eq!(bluff.made, None, "no showdown, no hand named");
+    let folded = g.players[0].last_result.clone().unwrap();
+    assert_eq!(folded.outcome, Outcome::Folded(Street::Flop));
+    assert_eq!(folded.net, -20);
+    assert!(!folded.bluffed);
+}
+
+#[test]
 fn the_result_names_the_kicker_when_it_decides() {
     // Both have a pair of kings on K♠ 7♦ 2♥ 9♣ 4♠: seat 0's ace beats seat 1's queen.
     let mut g = game(2, &[500, 500], 0, 10, 0);
@@ -272,6 +295,15 @@ fn the_result_names_the_kicker_when_it_decides() {
         "{}",
         g.result_lines[0]
     );
+
+    let won = g.players[0].last_result.clone().unwrap();
+    assert_eq!(won.outcome, Outcome::WonShowdown);
+    assert_eq!(won.net, 500);
+    assert_eq!(won.made.as_deref(), Some("Pair of Kings"));
+    assert_eq!(won.against, vec![g.players[1].name.clone()]);
+    let lost = g.players[1].last_result.clone().unwrap();
+    assert_eq!((lost.outcome, lost.net), (Outcome::LostShowdown, -500));
+    assert_eq!(lost.hole, parse_cards("Kc Qd").unwrap());
 
     // Aces against kings: the pairs decide, no kicker is named.
     let mut g = game(2, &[500, 500], 0, 10, 0);

@@ -4,7 +4,8 @@
 //! * `bot`, `stats`: computer players and the playing-style estimate.
 //! * `table`, `protocol`, `net`: the table server every game runs on, and how
 //!   clients talk to it (in memory for your own seat, TCP for everyone else).
-//! * `config`: the optional `holdem.toml` file.
+//! * `config`: the optional `holdem.toml` file; `history`: your statistics over
+//!   all games, in `stats.toml` next to it.
 //!
 //! The terminal front end lives in the `holdem` binary.
 
@@ -13,6 +14,7 @@ pub mod card;
 pub mod config;
 pub mod eval;
 pub mod game;
+pub mod history;
 pub mod net;
 pub mod protocol;
 pub mod stats;

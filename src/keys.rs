@@ -22,9 +22,9 @@ pub enum Place {
     Raise,
     Over,
     HelpWindow,
-    LogWindow,
+    /// The game info window: the table log, your hands and your style.
+    InfoWindow,
     SettingsWindow,
-    ProfileWindow,
     LeaveWindow,
     /// Keys that work everywhere; handled before anything else.
     Everywhere,
@@ -287,7 +287,11 @@ pub const SECTIONS: &[Section] = &[
         title: "AT THE TABLE, AT ANY TIME",
         rows: &[
             OPEN_HELP,
-            row(&[(&[Char('l')], Cmd::Log)], "open the full hand log", "log"),
+            row(
+                &[(&[Char('l')], Cmd::Log)],
+                "game info: the table log, your hands and your style",
+                "game info",
+            ),
             row(
                 &[(&[Char('p')], Cmd::Profile)],
                 "your playing style and the bot style it is closest to",
@@ -349,7 +353,11 @@ pub const SECTIONS: &[Section] = &[
                 "your playing style",
                 "your style",
             ),
-            row(&[(&[Char('l')], Cmd::Log)], "the hand log", "log"),
+            row(
+                &[(&[Char('l')], Cmd::Log)],
+                "game info: the table log, your hands and your style",
+                "game info",
+            ),
             OPEN_HELP,
             LEAVE,
         ],
@@ -373,9 +381,14 @@ pub const SECTIONS: &[Section] = &[
         ],
     },
     Section {
-        place: Place::LogWindow,
-        title: "LOG WINDOW",
+        place: Place::InfoWindow,
+        title: "GAME INFO WINDOW",
         rows: &[
+            row(
+                &[(&[Left], Cmd::Left), (&[Right, Tab], Cmd::Right)],
+                "switch between the table log, your hands and your style",
+                "tab",
+            ),
             row(UP_DOWN, "scroll", "scroll"),
             row(
                 &[(&[PageUp], Cmd::PageUp), (&[PageDown], Cmd::PageDown)],
@@ -387,7 +400,8 @@ pub const SECTIONS: &[Section] = &[
                 "jump to the oldest / newest line",
                 "",
             ),
-            row(&[(&[Esc, Char('l')], Cmd::Close)], "close", "close"),
+            row(&[(&[Char('p')], Cmd::Profile)], "your style", ""),
+            row(&[(&[Esc, Enter, Char('l')], Cmd::Close)], "close", "close"),
         ],
     },
     Section {
@@ -403,15 +417,6 @@ pub const SECTIONS: &[Section] = &[
             ),
             row(&[(&[Esc, Enter, Char('s')], Cmd::Close)], "close", "close"),
         ],
-    },
-    Section {
-        place: Place::ProfileWindow,
-        title: "YOUR STYLE WINDOW",
-        rows: &[row(
-            &[(&[Esc, Enter, Char('p')], Cmd::Close)],
-            "close",
-            "close",
-        )],
     },
     Section {
         place: Place::LeaveWindow,
@@ -574,9 +579,8 @@ mod tests {
         &[Place::Raise],
         &[Place::Over],
         &[Place::HelpWindow],
-        &[Place::LogWindow],
+        &[Place::InfoWindow],
         &[Place::SettingsWindow],
-        &[Place::ProfileWindow],
         &[Place::LeaveWindow],
     ];
 
@@ -620,14 +624,14 @@ mod tests {
         assert_eq!(label(&s.rows[0]), "↑ ↓");
         assert_eq!(label(&s.rows[2]), "? or H or F1");
         assert_eq!(key(Place::Menu, Cmd::Up), "↑↓");
-        assert_eq!(key(Place::LogWindow, Cmd::First), "Home End");
+        assert_eq!(key(Place::InfoWindow, Cmd::First), "Home End");
         assert_eq!(key(Place::Join, Cmd::Down), "↑↓");
-        assert_eq!(key(Place::LogWindow, Cmd::Up), "↑↓");
+        assert_eq!(key(Place::InfoWindow, Cmd::Up), "↑↓");
         assert_eq!(label(&section(Place::Join).rows[0]), "↑ ↓ or Tab");
-        assert_eq!(label(&section(Place::LogWindow).rows[2]), "Home / End");
+        assert_eq!(label(&section(Place::InfoWindow).rows[3]), "Home / End");
         assert_eq!(
             reminder_text(Place::Table),
-            "? help   L log   P your style   S settings   Q leave"
+            "? help   L game info   P your style   S settings   Q leave"
         );
     }
 }

@@ -50,13 +50,18 @@ Every key is also listed on the first page of the in-game help (`?`).
 | Join screen | `↑` `↓`/`Tab` move between name, address and found tables, type to edit, `Enter` join, `Esc` back or cancel, `F1` help |
 | Lobby | `Enter` ready / not ready, `S` settings, `?`/`H` help, `Q`/`Esc` leave |
 | Your turn | `F` fold, `C` check/call, `R`/`B` raise box, `A` all-in (press twice) |
-| At the table | `Enter`/`N` next hand (ready), `Y` rebuy when offered, `L` log, `P` your style, `S` settings (speed, volume, win-chance hint; `W` saves them), `?`/`H` help, `Q`/`Esc` leave |
+| At the table | `Enter`/`N` next hand (ready), `Y` rebuy when offered, `L` game info, `P` your style, `S` settings (speed, volume, win-chance hint; `W` saves them), `?`/`H` help, `Q`/`Esc` leave |
 | Raise box | digits and `Backspace` type the total, `M` min, `H` half pot, `P` pot, `A` all-in, `↑` `↓` ± one big blind, `Enter` confirm, `Esc` cancel |
-| Final standings | `Enter` main menu (solo) or play again (network), `P` your style, `L` log, `?`/`H` help, `Q`/`Esc` leave |
+| Final standings | `Enter` main menu (solo) or play again (network), `P` your style, `L` game info, `?`/`H` help, `Q`/`Esc` leave |
+| Game info | `←` `→`/`Tab` switch tabs, `↑` `↓` `PgUp` `PgDn` `Home` `End` scroll, `P` your style, `Esc`/`Enter`/`L` close |
 | Anywhere | `Ctrl-C` quits immediately |
 
 Leaving offers *back to the main menu*, *quit* or *keep playing*. In a solo game, the game pauses
-while any window (help, log, settings, style, leave) is open.
+while any window (help, game info, settings, leave) is open.
+
+**Game info** (`L`) has three tabs: the *table log*, *your hands* (each hand you were dealt:
+the chips it won or cost, your cards, and how it ended, including bluffs) and *your style*. On
+a wide terminal the panel beside the table shows the log tab you looked at last.
 
 ## Table options
 
@@ -77,15 +82,21 @@ allowed by default.
 
 ## Your playing style
 
-Press **P** at the table, or look at the final standings. The game counts four standard
-statistics:
+Press **P** at the table (the *Your style* tab of game info), or look at the final standings.
+The game counts four standard statistics:
 - how often you play a hand (voluntarily put chips in before the flop);
 - how often you raise first;
 - how often you bet or raise rather than call;
 - how often your post-flop bets come without even a pair.
 
 It then names the closest of the eight bot styles. Only hands you start with at least 15 big
-blinds count, because with a short stack everyone has to play push-or-fold. An estimate
-appears after 15 such hands.
+blinds count, because with a short stack everyone has to play push-or-fold. A rough guess
+appears after 5 such hands, and the estimate counts as reliable after 15
+(`client.style_min_hands`). In the final standings, people show the style they are closest to
+(`≈ Shark`, with a `?` while it is a rough guess).
+
+Your counts are also added up over all your games, under your name, in `stats.toml` in your
+settings folder (next to `holdem.toml`); the style tab shows that estimate too. Delete the file
+to start over.
 
 How the style reference values are measured is described in [CONTRIBUTING](../CONTRIBUTING.md#tests).

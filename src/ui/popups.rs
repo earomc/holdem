@@ -1,9 +1,9 @@
-//! Windows drawn on top of the screen: help, the raise box, the hand log,
-//! settings, your playing style, and the leave dialog.
+//! Windows drawn on top of the screen: help, the raise box, game info (the
+//! table log, your hands and your style), settings, and the leave dialog.
 
 use ratatui::Frame;
 use ratatui::layout::{Alignment, Rect};
-use ratatui::style::{Color, Style};
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Clear};
 
@@ -11,11 +11,13 @@ use holdem::game::chips_text;
 use holdem::protocol::TableView;
 use holdem::stats;
 
+use super::hands::{self, hands_view};
 use super::log::log_view;
-use super::style::{centered, cyan, dim, key_for, reminder, reminder_spans, yellow};
+use super::over::{rough_note, style_line};
+use super::style::{bold, centered, cyan, dim, key_for, reminder, reminder_spans, yellow};
 use super::text::{fit, text_width, wrap_text};
 use super::{boxed, fitted};
-use crate::app::{App, LeaveChoice, RaisePrompt, SettingsRow, pot_raise_to};
+use crate::app::{App, InfoTab, LeaveChoice, RaisePrompt, SettingsRow, pot_raise_to};
 use crate::help::{self, Item};
 use crate::keys::{self, Cmd, Place};
 use crate::session::Kind;
@@ -105,10 +107,30 @@ pub(super) fn settings(frame: &mut Frame, app: &App, area: Rect) {
     );
 }
 
-// ------------------------------------------------------------------ log
+// ------------------------------------------------------------------ game info
 
-pub(super) fn log(frame: &mut Frame, app: &App, area: Rect) {
-    let Some(session) = app.session.as_ref() else {
+/// The row of tabs at the top of the game info window, the open one marked.
+fn tab_row(open: InfoTab) -> Line<'static> {
+    let mut spans = vec![Span::raw(" ")];
+    for (i, tab) in InfoTab::ALL.iter().enumerate() {
+        if i > 0 {
+            spans.push(Span::styled(" │ ", dim()));
+        }
+        if *tab == open {
+            spans.push(Span::styled(
+                format!("[{}]", tab.title()),
+                yellow().add_modifier(Modifier::BOLD),
+            ));
+        } else {
+            spans.push(Span::styled(format!(" {} ", tab.title()), dim()));
+        }
+    }
+    Line::from(spans)
+}
+
+/// The game info window: the table log, your hands and your style, as tabs.
+pub(super) fn info(frame: &mut Frame, app: &App, area: Rect) {
+    let (Some(tab), Some(session)) = (app.info, app.session.as_ref()) else {
         return;
     };
     let rect = centered(
@@ -119,14 +141,39 @@ pub(super) fn log(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(Clear, rect);
     let inner_h = rect.height.saturating_sub(2) as usize;
     let inner_w = rect.width.saturating_sub(2) as usize;
-    let (lines, max) = log_view(&session.log, inner_h, inner_w, app.log_scroll);
+    let mut lines = vec![tab_row(tab), Line::from("")];
+    let body_h = inner_h.saturating_sub(lines.len());
+    let max = match tab {
+        InfoTab::TableLog => {
+            let (body, max) = log_view(&session.log, body_h, inner_w, app.log_scroll);
+            lines.extend(body);
+            max
+        }
+        InfoTab::YourHands => {
+            if !session.my_hands.is_empty() {
+                lines.push(Line::from(Span::styled(
+                    fit(&format!(" {}", hands::summary(&session.my_hands)), inner_w),
+                    bold(),
+                )));
+                lines.push(Line::from(""));
+            }
+            let room = inner_h.saturating_sub(lines.len());
+            let (body, max) = hands_view(&session.my_hands, room, inner_w, app.log_scroll);
+            lines.extend(body);
+            max
+        }
+        InfoTab::Style => {
+            lines.extend(style_lines(app, inner_w));
+            0
+        }
+    };
     app.log_max.set(max);
     let scroll = app.log_scroll.min(max);
-    let keys = keys::reminder_text(Place::LogWindow);
+    let keys = keys::reminder_text(Place::InfoWindow);
     let title = if scroll > 0 {
-        format!(" Hand log, {scroll} lines up  ({keys}) ")
+        format!(" Game info, {scroll} lines up  ({keys}) ")
     } else {
-        format!(" Hand log  ({keys}) ")
+        format!(" Game info  ({keys}) ")
     };
     frame.render_widget(
         boxed(lines, window(fit(&title, inner_w), Color::Cyan), rect),
@@ -134,20 +181,23 @@ pub(super) fn log(frame: &mut Frame, app: &App, area: Rect) {
     );
 }
 
-// ------------------------------------------------------------------ profile
-
 fn bar(share: f32, width: usize) -> String {
     let filled = (share.clamp(0.0, 1.0) * width as f32).round() as usize;
     format!("{}{}", "█".repeat(filled), "░".repeat(width - filled))
 }
 
-pub(super) fn profile(frame: &mut Frame, app: &App, area: Rect) {
-    let stats = app.view().map(|v| v.your_stats).unwrap_or_default();
+/// The Your style tab: this game's numbers, and the estimate over all games.
+fn style_lines(app: &App, width: usize) -> Vec<Line<'static>> {
+    let stats = app
+        .session
+        .as_ref()
+        .map(|s| s.game_stats)
+        .unwrap_or_default();
     let facts = app.help_facts();
     let (min_hands, min_stack) = (facts.style_min_hands, facts.style_min_stack_bb);
-    let mut lines: Vec<Line<'static>> = vec![Line::from("")];
+    let mut lines: Vec<Line<'static>> = Vec::new();
     let counted = format!(
-        " Hands counted: {}  (only hands you started with at least {} big blinds:",
+        " Hands counted this game: {}  (only hands you started with at least {} big blinds:",
         stats.hands, min_stack
     );
     lines.push(Line::from(counted));
@@ -159,7 +209,8 @@ pub(super) fn profile(frame: &mut Frame, app: &App, area: Rect) {
     match stats::profile(&stats, min_hands) {
         None => {
             lines.push(Line::from(format!(
-                " Play at least {min_hands} counted hands for an estimate."
+                " Play at least {} counted hands for a first guess.",
+                stats::ROUGH_HANDS.min(min_hands)
             )));
         }
         Some(p) => {
@@ -198,26 +249,47 @@ pub(super) fn profile(frame: &mut Frame, app: &App, area: Rect) {
                     Span::raw(format!(" {score}% match")),
                 ]));
             }
+            if p.rough {
+                lines.push(Line::from(""));
+                for l in wrap_text(
+                    &format!(" {}", rough_note(stats.hands, min_hands)),
+                    width.saturating_sub(1),
+                    1,
+                ) {
+                    lines.push(Line::from(Span::styled(l, dim())));
+                }
+            }
         }
     }
-    while lines.len() < 17 {
-        lines.push(Line::from(""));
+    lines.push(Line::from(""));
+    let all_games = match app.stats_file {
+        Some(_) => {
+            let saved = app.saved_stats();
+            let mut all = saved.stats;
+            let mut games = saved.games;
+            let saved_already = app.session.as_ref().is_some_and(|s| s.stats_saved);
+            if !saved_already && stats.hands > 0 {
+                all.add(&stats);
+                games += 1;
+            }
+            format!(
+                " All games ({games} game{}, {} counted hands): {}",
+                if games == 1 { "" } else { "s" },
+                all.hands,
+                style_line(&all, min_hands)
+            )
+        }
+        None => " All games: not kept (there is no settings folder to keep them in).".to_string(),
+    };
+    for l in wrap_text(&all_games, width.saturating_sub(1), 3) {
+        lines.push(Line::from(Span::styled(l, Style::new().fg(Color::Cyan))));
     }
-    let mut spans = vec![Span::raw(
-        " The styles are explained on the last help page.  ",
-    )];
-    spans.extend(reminder(&[], Place::ProfileWindow));
-    lines.push(Line::from(spans));
-    let (rect, lines) = fitted(area, 74, lines);
-    frame.render_widget(Clear, rect);
-    frame.render_widget(
-        boxed(
-            lines,
-            window(" Your playing style ".to_string(), Color::Cyan),
-            rect,
-        ),
-        rect,
-    );
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        " The styles are explained on the last help page.",
+        dim(),
+    )));
+    lines
 }
 
 // ------------------------------------------------------------------ raise box

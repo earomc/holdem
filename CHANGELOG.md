@@ -11,6 +11,13 @@ All notable changes to holdem. The format follows
   follows from the name, so the same name always gets the same symbol.
 - When a kicker decides a pot, the result says so: "wins the pot (840) with Pair of Kings,
   Ace kicker".
+- **Game info** (`L`): one window with three tabs, *Table log*, *Your hands* and *Your style*
+  (`Tab` or `←` `→` switch). `L` opens the tab you looked at last, `P` opens *Your style*.
+- *Your hands*: every hand you were dealt, with the chips it won or cost, your cards, your hand
+  at a showdown and how it ended ("folded on the turn", "bluff: everyone folded"), and a line
+  for the whole game. The panel beside the table shows whichever log tab you looked at last.
+- Your playing style is counted over all your games too, in `stats.toml` in your settings
+  folder; the style tab shows the estimate for this game and for all games.
 
 ### Changed
 - Slower game speeds: Slow 2000 ms, Normal 1200 ms, Fast 600 ms, and a new Turbo at 200 ms.
@@ -19,6 +26,12 @@ All notable changes to holdem. The format follows
   and *off* are explained too.
 - Names that differ only in case count as the same: no bot is called "Ava" next to "ava", and
   a second "ANN" joining after "Ann" becomes "ANN 2".
+- A rough style estimate shows after 5 counted hands, saying it gets more accurate with more;
+  from `client.style_min_hands` (15) on it counts as reliable.
+- The final standings say how long each player was at the table: "out after 20 hands
+  (12–31)", "left after 3 hands (1–3), 900", "1,250 chips (from hand 12)". People's rows show
+  the style they are closest to ("≈ Shark", with a `?` while rough) instead of "(person)".
+- The log window and the style window are now tabs of game info.
 
 ### Fixed
 - After you act, the next bot waits a full step, as it does after another bot. Before, it moved

@@ -5,7 +5,7 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use holdem::protocol::ClientMsg;
 
-use super::{App, LeaveChoice, MenuItem, PAGE, Screen, cycle};
+use super::{App, InfoTab, LeaveChoice, MenuItem, PAGE, Screen, cycle};
 use crate::help;
 use crate::keys::{self, Cmd, Place};
 use crate::session::Kind;
@@ -22,14 +22,10 @@ impl App {
             self.leave_key(code);
         } else if self.show_help {
             self.help_key(code);
-        } else if self.show_log {
-            self.log_key(code);
+        } else if self.info.is_some() {
+            self.info_key(code);
         } else if self.show_settings {
             self.settings_key(code);
-        } else if self.show_profile {
-            if keys::command(Place::ProfileWindow, code) == Some(Cmd::Close) {
-                self.show_profile = false;
-            }
         } else {
             match self.screen {
                 Screen::Menu => self.menu_key(code),
@@ -53,15 +49,12 @@ impl App {
                 self.help_page = 0;
                 self.help_scroll = 0;
             }
-            Cmd::Log => {
-                self.show_log = true;
-                self.log_scroll = 0;
-            }
+            Cmd::Log => self.show_tab(self.info_tab),
             Cmd::Settings => {
                 self.show_settings = true;
                 self.settings_row = 0;
             }
-            Cmd::Profile => self.show_profile = true,
+            Cmd::Profile => self.show_tab(InfoTab::Style),
             Cmd::Leave => self.leave = Some(0),
             _ => {}
         }
@@ -113,17 +106,37 @@ impl App {
         }
     }
 
-    fn log_key(&mut self, code: KeyCode) {
-        // The log scrolls up into the past: the offset counts lines above the newest.
+    /// Opens the game info window on `tab`, which the next L opens on too.
+    pub(super) fn show_tab(&mut self, tab: InfoTab) {
+        self.info = Some(tab);
+        self.info_tab = tab;
+        if tab != InfoTab::Style {
+            self.side_tab = tab;
+        }
+        self.log_scroll = 0;
+    }
+
+    fn info_key(&mut self, code: KeyCode) {
+        let Some(tab) = self.info else {
+            return;
+        };
+        let step = |delta: i32| {
+            let i = InfoTab::ALL.iter().position(|t| *t == tab).unwrap_or(0);
+            InfoTab::ALL[cycle(i, InfoTab::ALL.len(), delta)]
+        };
+        // The logs scroll up into the past: the offset counts lines above the newest.
         let max = self.log_max.get();
-        match keys::command(Place::LogWindow, code) {
+        match keys::command(Place::InfoWindow, code) {
+            Some(Cmd::Right) => self.show_tab(step(1)),
+            Some(Cmd::Left) => self.show_tab(step(-1)),
+            Some(Cmd::Profile) => self.show_tab(InfoTab::Style),
             Some(Cmd::Up) => self.log_scroll = (self.log_scroll + 1).min(max),
             Some(Cmd::Down) => self.log_scroll = self.log_scroll.saturating_sub(1),
             Some(Cmd::PageUp) => self.log_scroll = (self.log_scroll + PAGE).min(max),
             Some(Cmd::PageDown) => self.log_scroll = self.log_scroll.saturating_sub(PAGE),
             Some(Cmd::First) => self.log_scroll = max,
             Some(Cmd::Last) => self.log_scroll = 0,
-            Some(Cmd::Close) => self.show_log = false,
+            Some(Cmd::Close) => self.info = None,
             _ => {}
         }
     }

@@ -22,6 +22,28 @@ fn card_span(c: Card) -> Span<'static> {
     )
 }
 
+/// Cards as short coloured text for lists: " A♦ 10♣", each three columns.
+pub(super) fn small_cards(cards: &[Card], dimmed: bool) -> Vec<Span<'static>> {
+    let mut spans = Vec::new();
+    for (i, c) in cards.iter().enumerate() {
+        if i > 0 {
+            spans.push(Span::raw(" "));
+        }
+        let style = if dimmed {
+            dim()
+        } else if c.suit.is_red() {
+            Style::new().fg(Color::LightRed)
+        } else {
+            Style::new()
+        };
+        spans.push(Span::styled(
+            format!("{:>2}{}", c.rank_symbol(), c.suit.symbol()),
+            style,
+        ));
+    }
+    spans
+}
+
 fn back_span() -> Span<'static> {
     Span::styled(" ▒▒▒ ", Style::new().fg(Color::LightBlue).bg(Color::Blue))
 }

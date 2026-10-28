@@ -177,10 +177,50 @@ pub struct Player {
     /// Elimination order (higher = knocked out later = better place).
     pub eliminated: Option<u32>,
     pub stats: Stats,
+    /// The first hand this player was dealt in (or will be).
+    pub joined: u32,
+    /// How the last settled hand went for this player, if they were dealt in.
+    pub last_result: Option<HandResult>,
+    /// The street this player folded on, this hand.
+    folded_on: Option<Street>,
+    /// Bet or raised after the flop without even a pair, this hand.
+    bluffed_this_hand: bool,
     /// This hand counts for the statistics (the player was not short-stacked).
     tracked: bool,
     played_this_hand: bool,
     raised_this_hand: bool,
+}
+
+/// How a hand ended for one player.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Outcome {
+    /// Gave up on this street.
+    Folded(Street),
+    /// Everyone else folded.
+    #[default]
+    WonUncontested,
+    /// Won a pot (or all of one) at the showdown.
+    WonShowdown,
+    /// Shared the pot at the showdown, and won none alone.
+    Split,
+    LostShowdown,
+}
+
+/// One hand from one player's side: what it cost or brought, and how.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct HandResult {
+    pub hand: u32,
+    /// Chips after the hand minus chips before it.
+    pub net: i64,
+    pub hole: Vec<Card>,
+    /// The hand made, for players who reached the showdown ("Pair of Kings").
+    pub made: Option<String>,
+    pub outcome: Outcome,
+    /// Bet or raised after the flop without even a pair.
+    pub bluffed: bool,
+    /// The others still in at the showdown.
+    pub against: Vec<String>,
 }
 
 impl Player {
@@ -208,6 +248,10 @@ impl Player {
             rebuys: 0,
             eliminated: None,
             stats: Stats::default(),
+            joined: 1,
+            last_result: None,
+            folded_on: None,
+            bluffed_this_hand: false,
             tracked: false,
             played_this_hand: false,
             raised_this_hand: false,
@@ -250,7 +294,11 @@ pub struct Finish {
     pub left: bool,
     /// Elimination order; only meaningful when `left` is false.
     pub order: u32,
+    /// The hand they were knocked out or left in.
     pub hand: u32,
+    /// The first hand they played.
+    #[serde(default)]
+    pub joined: u32,
 }
 
 /// One row of the standings.
@@ -262,7 +310,7 @@ pub struct Standing {
     pub is_human: bool,
     pub style: String,
     pub chips: u32,
-    /// "1,250 chips", "eliminated in hand 31", "left in hand 12 with 900"...
+    /// "1,250 chips", "out after 20 hands (12–31)", "left after 3 hands (5–7), 900"...
     pub status: String,
     pub stats: Stats,
 }
@@ -488,6 +536,7 @@ impl Game {
             left,
             order,
             hand: self.hand_no,
+            joined: p.joined,
         }
     }
 }

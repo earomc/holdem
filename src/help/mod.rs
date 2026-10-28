@@ -52,7 +52,7 @@ fn P(label: impl Into<String>, text: impl Into<String>) -> Item {
 /// Values in effect where the help is read (they depend on the settings file
 /// and on the table).
 pub struct Facts {
-    /// Counted hands before your style is estimated.
+    /// Counted hands before the style estimate is reliable.
     pub style_min_hands: u32,
     /// Hands started with fewer big blinds do not count for the style.
     pub style_min_stack_bb: u32,

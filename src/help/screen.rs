@@ -8,6 +8,7 @@ use crate::keys::{self, Cmd, Place};
 pub(super) fn page(facts: &Facts) -> Page {
     let settings = keys::key(Place::Table, Cmd::Settings);
     let profile = keys::key(Place::Table, Cmd::Profile);
+    let log = keys::key(Place::Table, Cmd::Log);
     let mut styles = vec![
         H("YOUR OPPONENTS"),
         T(format!(
@@ -87,10 +88,15 @@ pub(super) fn page(facts: &Facts) -> Page {
            the flop), how often you raise first, how often you bet or raise rather than \
            call, and how often your bets after the flop are made without even a pair. \
            Only hands you start with at least {} big blinds count: with fewer, everybody \
-           must play push-or-fold. After {} such hands it compares your numbers with \
-           what each bot style really does (measured over thousands of bot hands) and \
-           names the closest. Neighbouring styles are similar, so look at the top two.",
-                facts.style_min_stack_bb, facts.style_min_hands
+           must play push-or-fold. It compares your numbers with what each bot style \
+           really does (measured over thousands of bot hands) and names the closest: a \
+           rough guess after {} such hands, a reliable estimate after {}. Neighbouring \
+           styles are similar, so look at the top two. Your counts are also added up over \
+           all your games (in stats.toml, next to holdem.toml), and the Your style tab of \
+           game info (key {log}) shows that estimate too.",
+                facts.style_min_stack_bb,
+                holdem::stats::ROUGH_HANDS.min(facts.style_min_hands),
+                facts.style_min_hands
             )),
         ]
         .into_iter()

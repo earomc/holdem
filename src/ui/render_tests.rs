@@ -10,7 +10,7 @@ use holdem::config::Config;
 use holdem::game::State;
 
 use super::draw;
-use crate::app::{App, Screen};
+use crate::app::{App, InfoTab, Screen};
 use crate::sound::Sound;
 
 const SIZES: [(u16, u16); 5] = [(80, 23), (80, 28), (109, 30), (150, 45), (50, 12)];
@@ -23,12 +23,22 @@ fn press(app: &mut App, code: KeyCode) {
 fn draw_everything(app: &mut App) {
     for (w, h) in SIZES {
         let mut terminal = Terminal::new(TestBackend::new(w, h)).unwrap();
-        for overlay in 0..6 {
+        for overlay in 0..8 {
             app.show_help = overlay == 1;
-            app.show_log = overlay == 2;
-            app.show_settings = overlay == 3;
-            app.show_profile = overlay == 4;
-            app.leave = (overlay == 5).then_some(1);
+            app.info = match overlay {
+                2 => Some(InfoTab::TableLog),
+                3 => Some(InfoTab::YourHands),
+                4 => Some(InfoTab::Style),
+                _ => None,
+            };
+            app.show_settings = overlay == 5;
+            app.leave = (overlay == 6).then_some(1);
+            // The panel beside the table shows either log tab.
+            app.side_tab = if overlay == 7 {
+                InfoTab::YourHands
+            } else {
+                InfoTab::TableLog
+            };
             let pages = if overlay == 1 {
                 crate::help::page_count()
             } else {
@@ -43,10 +53,10 @@ fn draw_everything(app: &mut App) {
         }
     }
     app.show_help = false;
-    app.show_log = false;
+    app.info = None;
     app.show_settings = false;
-    app.show_profile = false;
     app.leave = None;
+    app.side_tab = InfoTab::TableLog;
 }
 
 fn fast_config() -> Config {
@@ -155,6 +165,25 @@ fn show_screens() {
         println!("{}", screen_text(&app, 80, 24));
         press(&mut app, KeyCode::Esc);
     }
+    // Some hands in, then your hands: in the window and beside the table.
+    play(&mut app, 6, usize::MAX);
+    press(&mut app, KeyCode::Char('l'));
+    press(&mut app, KeyCode::Left);
+    println!("{}", screen_text(&app, 100, 30));
+    press(&mut app, KeyCode::Esc);
+    println!("{}", screen_text(&app, 150, 45));
+    // The final standings of a short game.
+    let mut config = fast_config();
+    config.tables[0].rules.hand_limit = 10;
+    config.tables[0].fluctuation.enabled = true;
+    config.tables[0].fluctuation.join_chance = 1.0;
+    config.tables[0].fluctuation.leave_chance = 0.2;
+    let mut app = App::new(config, Some(2), Sound::new(true));
+    app.setup.fluctuation = true;
+    press(&mut app, KeyCode::Enter);
+    press(&mut app, KeyCode::Enter);
+    play(&mut app, 100, usize::MAX);
+    println!("{}", screen_text(&app, 100, 30));
 }
 
 /// The hint is on screen for the whole hand while you are in it: on your
@@ -291,6 +320,35 @@ fn the_setup_screen_explains_the_value_that_is_shown() {
     let dead = screen_text(&app, 100, 30);
     assert!(dead.contains("The big blind moves exactly one seat each hand"));
     assert!(!dead.contains("The button goes to the next player"));
+}
+
+#[test]
+fn the_game_info_window_switches_tabs_and_the_side_panel_follows() {
+    let mut app = App::new(fast_config(), Some(6), Sound::new(true));
+    press(&mut app, KeyCode::Enter); // Play against bots
+    press(&mut app, KeyCode::Enter); // Deal
+    play(&mut app, 3, usize::MAX);
+    let wide = |app: &App| screen_text(app, 150, 45);
+    assert!(wide(&app).contains("Log (L: game info)"));
+    press(&mut app, KeyCode::Char('l'));
+    assert_eq!(app.info, Some(InfoTab::TableLog));
+    press(&mut app, KeyCode::Tab);
+    assert_eq!(app.info, Some(InfoTab::YourHands));
+    let hands = wide(&app);
+    assert!(hands.contains("[Your hands]"), "{hands}");
+    assert!(hands.contains("This game:"), "{hands}");
+    press(&mut app, KeyCode::Right);
+    assert_eq!(app.info, Some(InfoTab::Style));
+    assert!(wide(&app).contains("Hands counted this game"));
+    press(&mut app, KeyCode::Esc);
+    assert_eq!(app.info, None);
+    // The panel keeps the last log tab looked at, and L opens the last tab.
+    assert!(wide(&app).contains("Your hands (L: game info)"));
+    press(&mut app, KeyCode::Char('l'));
+    assert_eq!(app.info, Some(InfoTab::Style));
+    press(&mut app, KeyCode::Esc);
+    press(&mut app, KeyCode::Char('p'));
+    assert_eq!(app.info, Some(InfoTab::Style));
 }
 
 #[test]

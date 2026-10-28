@@ -168,6 +168,17 @@ fn two_people_never_see_each_others_cards() {
                     assert!(g.players[i].shown, "{} saw hidden cards", p.id);
                 }
             }
+            // The hand result is always your own (it holds your cards).
+            if let (Some(r), Some(me)) = (&v.your_result, v.you)
+                && v.state == State::HandOver
+                && r.hand == v.hand_no
+            {
+                assert_eq!(
+                    r.hole, v.seats[me].cards,
+                    "{} got someone else's result",
+                    p.id
+                );
+            }
         }
     }
     assert!(peers[0].view.as_ref().unwrap().multiplayer);

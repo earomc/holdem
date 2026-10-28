@@ -338,7 +338,13 @@ fn players_join_and_leave_only_between_hands() {
     assert_eq!(g.chips_in_play(), g.total_chips());
     let standings = g.standings();
     let left = standings.iter().find(|s| s.place.is_none()).unwrap();
-    assert!(left.status.contains("left in hand 1"));
+    assert_eq!(left.status, "left after 1 hand (hand 1), 1,000");
+    let zed = standings.iter().find(|s| s.name == "Zed").unwrap();
+    assert!(
+        zed.status.ends_with("chips (from hand 2)"),
+        "{}",
+        zed.status
+    );
 }
 
 #[test]

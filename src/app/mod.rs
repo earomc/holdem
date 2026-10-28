@@ -7,7 +7,7 @@
 //! actions at the table, `settings` the settings window and saving, and
 //! `lifecycle` starting and leaving games and what happens as time passes.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::io;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
@@ -16,6 +16,7 @@ use std::time::{Duration, Instant};
 use holdem::card::Rng;
 use holdem::config::{Config, SpeedConfig, TableConfig};
 use holdem::game::{Rules, State};
+use holdem::history::{self, Record};
 use holdem::net::{Connection, Found};
 use holdem::protocol::TableView;
 
@@ -86,6 +87,26 @@ pub enum Screen {
     Lobby,
     Table,
     Over,
+}
+
+/// The tabs of the game info window.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum InfoTab {
+    TableLog,
+    YourHands,
+    Style,
+}
+
+impl InfoTab {
+    pub const ALL: [InfoTab; 3] = [InfoTab::TableLog, InfoTab::YourHands, InfoTab::Style];
+
+    pub fn title(self) -> &'static str {
+        match self {
+            InfoTab::TableLog => "Table log",
+            InfoTab::YourHands => "Your hands",
+            InfoTab::Style => "Your style",
+        }
+    }
 }
 
 /// The rows of the game setup screen.
@@ -228,14 +249,22 @@ pub struct App {
     pub help_scroll: usize,
     /// Largest useful help scroll offset, written by the renderer.
     pub help_max: Cell<usize>,
-    pub show_log: bool,
-    /// Lines scrolled up from the newest log entry.
+    /// The game info window, open on this tab.
+    pub info: Option<InfoTab>,
+    /// The tab the game info window opens on: the one looked at last.
+    pub info_tab: InfoTab,
+    /// What the panel beside the table shows: the log tab looked at last.
+    pub side_tab: InfoTab,
+    /// Lines scrolled up from the newest entry, in the log tabs.
     pub log_scroll: usize,
     pub log_max: Cell<usize>,
+    /// Where your statistics over all games are kept (`None`: nowhere).
+    pub stats_file: Option<PathBuf>,
+    /// Your saved statistics, read once per name: (name, record).
+    saved_stats: RefCell<Option<(String, Record)>>,
     pub show_settings: bool,
     /// Index into `SettingsRow::ALL`.
     pub settings_row: usize,
-    pub show_profile: bool,
     /// The leave window, with the highlighted choice (index into `LeaveChoice::ALL`).
     pub leave: Option<usize>,
 
@@ -360,12 +389,16 @@ impl App {
             help_page: 0,
             help_scroll: 0,
             help_max: Cell::new(0),
-            show_log: false,
+            info: None,
+            info_tab: InfoTab::TableLog,
+            side_tab: InfoTab::TableLog,
             log_scroll: 0,
             log_max: Cell::new(0),
+            // Tests must never write to the real settings folder.
+            stats_file: if cfg!(test) { None } else { history::file() },
+            saved_stats: RefCell::new(None),
             show_settings: false,
             settings_row: 0,
-            show_profile: false,
             leave: None,
             all_in_armed: false,
             toast: None,
@@ -464,11 +497,57 @@ impl App {
 
     /// True while a window that pauses a solo game is open.
     pub fn overlay_open(&self) -> bool {
-        self.show_help
-            || self.show_log
-            || self.show_settings
-            || self.show_profile
-            || self.leave.is_some()
+        self.show_help || self.info.is_some() || self.show_settings || self.leave.is_some()
+    }
+
+    /// The name your statistics are kept under: the one you chose, not the
+    /// "Mo 2" a table may have made of it.
+    pub fn stats_name(&self) -> String {
+        self.join.name.trim().to_string()
+    }
+
+    /// Your statistics from earlier games (read from the file once per name).
+    pub fn saved_stats(&self) -> Record {
+        let name = self.stats_name();
+        let mut cache = self.saved_stats.borrow_mut();
+        if let Some((n, r)) = cache.as_ref()
+            && *n == name
+        {
+            return *r;
+        }
+        let record = self
+            .stats_file
+            .as_deref()
+            .map(|path| history::load(path, &name))
+            .unwrap_or_default();
+        *cache = Some((name, record));
+        record
+    }
+
+    /// Adds this game's statistics to your saved ones, once per game.
+    pub(super) fn save_game_stats(&mut self) {
+        let Some(session) = self.session.as_mut() else {
+            return;
+        };
+        if session.stats_saved {
+            return;
+        }
+        if session.view.is_none() {
+            return;
+        }
+        session.stats_saved = true;
+        let stats = session.game_stats;
+        if stats.hands == 0 {
+            return;
+        }
+        let Some(path) = self.stats_file.clone() else {
+            return;
+        };
+        if let Err(e) = history::add_game(&path, &self.stats_name(), &stats) {
+            self.notify(format!("Your statistics could not be saved: {e}"));
+        }
+        // Read again next time, with this game in.
+        *self.saved_stats.borrow_mut() = None;
     }
 
     pub fn connecting(&self) -> bool {

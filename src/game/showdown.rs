@@ -1,7 +1,7 @@
 //! The end of a hand: returning uncalled bets, showing hands and paying the pots.
 
 use super::pots::{Award, Pot, award_pots, compute_pots};
-use super::{Game, GameEvent, Player, State};
+use super::{Game, GameEvent, HandResult, Outcome, Player, State};
 use crate::card::cards_text;
 use crate::eval::{self, Score};
 
@@ -85,6 +85,7 @@ impl Game {
             self.show_hands();
         }
         self.pay_pots(contested);
+        self.record_results(contested);
         self.events.push(GameEvent::HandSettled);
 
         // The pot has been paid out.
@@ -116,6 +117,50 @@ impl Game {
                 let name = self.players[i].name.clone();
                 self.log(format!("{name} shows {hole}: {desc}"));
             }
+        }
+    }
+
+    /// How the hand went for each player dealt in (after the pots are paid).
+    fn record_results(&mut self, contested: bool) {
+        let live: Vec<usize> = (0..self.players.len())
+            .filter(|&i| self.players[i].live())
+            .collect();
+        for i in 0..self.players.len() {
+            let p = &self.players[i];
+            if !p.in_hand {
+                self.players[i].last_result = None;
+                continue;
+            }
+            let won_alone = self
+                .awards
+                .iter()
+                .any(|a| a.winners.len() == 1 && a.winners[0] == i);
+            let shared = self.awards.iter().any(|a| a.winners.contains(&i));
+            let outcome = match p.folded_on {
+                Some(street) => Outcome::Folded(street),
+                None if !contested => Outcome::WonUncontested,
+                None if won_alone => Outcome::WonShowdown,
+                None if shared => Outcome::Split,
+                None => Outcome::LostShowdown,
+            };
+            let at_showdown = contested && p.live();
+            let result = HandResult {
+                hand: self.hand_no,
+                net: i64::from(p.chips) - i64::from(p.start_chips),
+                hole: p.hole.clone(),
+                made: at_showdown.then(|| p.score.map(eval::describe)).flatten(),
+                outcome,
+                bluffed: p.bluffed_this_hand,
+                against: if at_showdown {
+                    live.iter()
+                        .filter(|&&j| j != i)
+                        .map(|&j| self.players[j].name.clone())
+                        .collect()
+                } else {
+                    Vec::new()
+                },
+            };
+            self.players[i].last_result = Some(result);
         }
     }
 

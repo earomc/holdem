@@ -162,6 +162,9 @@ impl Game {
             cards.len() >= 5 && eval::category(eval::evaluate(&cards)) == Category::HighCard
         };
         let p = &mut self.players[seat];
+        if aggressive && weak {
+            p.bluffed_this_hand = true;
+        }
         if !p.tracked {
             return;
         }
@@ -204,6 +207,7 @@ impl Game {
         match action {
             Action::Fold => {
                 self.players[seat].folded = true;
+                self.players[seat].folded_on = Some(self.street);
                 self.say(seat, "Fold".to_string(), format!("{name} folds"));
                 self.events.push(GameEvent::Fold(seat));
             }

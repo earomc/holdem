@@ -1,8 +1,10 @@
 //! One game as the client sees it: the connection to a table server (which we
 //! may be running ourselves), and everything the server has told us.
 
+use holdem::game::HandResult;
 use holdem::net::{Connection, Server};
 use holdem::protocol::{Announcement, ClientMsg, LobbyView, ServerMsg, TableView};
+use holdem::stats::Stats;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Kind {
@@ -28,6 +30,13 @@ pub struct Session {
     pub log: Vec<String>,
     /// How many log lines to keep.
     log_keep: usize,
+    /// Your hands in this game, oldest first.
+    pub my_hands: Vec<HandResult>,
+    /// Your statistics this game, as last seen while you had a seat (the
+    /// views stop carrying them once you are knocked out).
+    pub game_stats: Stats,
+    /// This game's statistics have been added to your saved ones.
+    pub stats_saved: bool,
     /// Where others can reach a hosted table, e.g. "192.168.1.20:7777".
     pub share: Option<String>,
     /// Set when the table hung up on us.
@@ -75,6 +84,9 @@ impl Session {
             view: None,
             log: Vec::new(),
             log_keep: log_keep.max(1),
+            my_hands: Vec::new(),
+            game_stats: Stats::default(),
+            stats_saved: false,
             share,
             closed: None,
             server_app: String::new(),
@@ -106,6 +118,9 @@ impl Session {
                     self.lobby = Some(lobby);
                     self.view = None;
                     self.log.clear();
+                    self.my_hands.clear();
+                    self.game_stats = Stats::default();
+                    self.stats_saved = false;
                 }
                 ServerMsg::Table(view) => {
                     let mut view = *view;
@@ -115,6 +130,14 @@ impl Session {
                         self.log.drain(0..extra);
                     }
                     update.events.append(&mut view.events);
+                    if let Some(r) = &view.your_result
+                        && self.my_hands.last().is_none_or(|h| h.hand != r.hand)
+                    {
+                        self.my_hands.push(r.clone());
+                    }
+                    if view.you.is_some() {
+                        self.game_stats = view.your_stats;
+                    }
                     self.view = Some(view);
                 }
                 ServerMsg::Notice(text) => update.notices.push(text),

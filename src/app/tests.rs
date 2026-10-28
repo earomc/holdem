@@ -289,3 +289,52 @@ fn with_one_table_there_is_nothing_to_choose() {
     assert!(!app.setup.rows().contains(&SetupRow::Table));
     assert_eq!(app.setup.rows()[app.setup.row], SetupRow::Seats);
 }
+
+#[test]
+fn your_statistics_are_kept_once_per_game() {
+    let dir = std::env::temp_dir().join(format!("holdem-app-history-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let file = dir.join(holdem::history::FILE_NAME);
+    let mut config = Config::default();
+    config.client.name = "Mo".to_string();
+    config.speeds.push(holdem::config::SpeedConfig {
+        name: "Test".to_string(),
+        ms: 20,
+    });
+    config.client.speed = "Test".to_string();
+    let mut app = App::new(config, Some(9), Sound::new(true));
+    app.stats_file = Some(file.clone());
+    let press = |app: &mut App, code| app.on_key(KeyEvent::new(code, KeyModifiers::NONE));
+    for game in 1..=2 {
+        press(&mut app, KeyCode::Enter); // Play against bots
+        press(&mut app, KeyCode::Enter); // Deal
+        let deadline = Instant::now() + Duration::from_secs(30);
+        // Play a few hands, or until the game is over (which saves by itself).
+        while app.screen != Screen::Over && app.view().is_none_or(|v| v.hand_no < 3) {
+            assert!(
+                Instant::now() < deadline,
+                "game {game} got stuck on {:?}: {:?}",
+                app.screen,
+                app.view()
+                    .map(|v| (v.hand_no, v.state, v.legal.is_some(), v.you_ready))
+            );
+            app.tick();
+            if let Some(v) = app.view() {
+                if v.legal.is_some() {
+                    press(&mut app, KeyCode::Char('c'));
+                } else if v.state == State::HandOver && !v.you_ready {
+                    press(&mut app, KeyCode::Enter);
+                }
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        assert!(app.session.as_ref().unwrap().game_stats.hands > 0);
+        app.save_game_stats();
+        app.save_game_stats(); // a second time changes nothing
+        app.return_to_menu(); // ... and neither does leaving afterwards
+        let kept = holdem::history::load(&file, "mo");
+        assert_eq!(kept.games, game);
+        assert_eq!(app.saved_stats(), kept, "the cache is read again");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
