@@ -335,6 +335,15 @@ impl Sound {
         }
     }
 
+    /// Sound that counts as working but plays nothing: for pictures of the
+    /// screen, which should show the volume rather than "no sound".
+    #[cfg(test)]
+    pub fn silent() -> Sound {
+        let mut sound = Sound::new(true);
+        sound.unavailable = None;
+        sound
+    }
+
     /// `None` when sound works, otherwise a short reason why it does not.
     pub fn unavailable(&self) -> Option<&'static str> {
         self.unavailable

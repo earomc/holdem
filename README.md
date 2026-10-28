@@ -3,6 +3,8 @@
 No-limit Texas Hold'em in the terminal, written in Rust with [ratatui](https://ratatui.rs).
 Play against computer opponents, or with other people over your home network or the internet.
 
+![Your turn after the flop: five opponents around the table, the board, the pot, your cards and your choices](docs/screenshots/table.svg)
+
 ## Features
 
 - Up to eight bot opponents, each with one of eight playing styles.

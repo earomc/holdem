@@ -27,6 +27,8 @@ mod text;
 
 #[cfg(test)]
 mod render_tests;
+#[cfg(test)]
+mod screenshots;
 
 pub fn draw(frame: &mut Frame, app: &App) {
     let area = frame.area();

@@ -39,6 +39,15 @@ style is recognized from its own play: on samples of 200 hands, the right style 
 83% of the time and is among the top two 98% of the time. Neighbours such as Rock and Nit are
 genuinely similar.
 
+## Screenshots
+
+The pictures in `docs/screenshots/` are drawn by the game itself, so they always show the
+current screens. After changing what a screen looks like, redraw them:
+
+```
+cargo test -p holdem screenshots -- --ignored
+```
+
 ## Releasing
 
 Releases are built by [dist](https://axodotdev.github.io/cargo-dist/) (formerly cargo-dist)
