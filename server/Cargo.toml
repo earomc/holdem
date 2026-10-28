@@ -5,6 +5,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
+rust-version.workspace = true
 # Builds the binary from ../src, which `cargo package` cannot include.
 publish = false
 

@@ -9,6 +9,8 @@ version = "0.6.1"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/earomc/holdem"
+# The oldest Rust that builds holdem; CI checks it.
+rust-version = "1.88"
 
 [workspace.dependencies]
 ratatui = "0.30.2"
@@ -22,6 +24,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
+rust-version.workspace = true
 
 [features]
 # Sound effects through rodio. Build with `--no-default-features` (or build the
