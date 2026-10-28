@@ -14,7 +14,7 @@ use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 
 use holdem::card::Rng;
-use holdem::config::{Config, SpeedConfig};
+use holdem::config::{Config, SpeedConfig, TableConfig};
 use holdem::game::{Rules, State};
 use holdem::net::{Connection, Found};
 use holdem::protocol::TableView;
@@ -93,6 +93,8 @@ pub enum Screen {
 pub enum SetupRow {
     /// Your name at the table, typed in place (the same one the join screen uses).
     Name,
+    /// Which of the `[[tables]]` to start from (shown when there are several).
+    Table,
     Seats,
     FillWithBots,
     Chips,
@@ -108,8 +110,9 @@ pub enum SetupRow {
     WinChance,
 }
 
-pub const SETUP_ROWS: [SetupRow; 14] = [
+pub const SETUP_ROWS: [SetupRow; 15] = [
     SetupRow::Name,
+    SetupRow::Table,
     SetupRow::Seats,
     SetupRow::FillWithBots,
     SetupRow::Chips,
@@ -131,6 +134,9 @@ pub struct Setup {
     /// Setting up a hosted network game rather than a solo game.
     pub host: bool,
     pub row: usize,
+    /// The chosen one of the `[[tables]]`, and how many there are.
+    pub table: usize,
+    pub tables: usize,
     pub seats: usize,
     pub fill_with_bots: bool,
     pub rules: Rules,
@@ -140,13 +146,25 @@ pub struct Setup {
 }
 
 impl Setup {
-    /// Rows shown for this kind of game (solo games always fill seats with bots).
+    /// Rows shown for this kind of game (solo games always fill seats with
+    /// bots, and with one table there is nothing to choose).
     pub fn rows(&self) -> Vec<SetupRow> {
         SETUP_ROWS
             .iter()
             .copied()
             .filter(|r| self.host || *r != SetupRow::FillWithBots)
+            .filter(|r| self.tables > 1 || *r != SetupRow::Table)
             .collect()
+    }
+
+    /// Starts over from `table`'s settings.
+    pub fn load(&mut self, index: usize, table: &TableConfig) {
+        self.table = index;
+        self.seats = table.seats;
+        self.fill_with_bots = table.fill_with_bots;
+        self.rules = table.rules.clone();
+        self.fluctuation = table.fluctuation.enabled;
+        self.allow_win_chance = table.allow_win_chance;
     }
 }
 
@@ -198,7 +216,7 @@ pub struct App {
     pub setup: Setup,
     pub join: Join,
     pub session: Option<Session>,
-    /// Index into `config.game.speeds`.
+    /// Index into `config.speeds`.
     pub speed: usize,
     /// Your wish to see the win-chance hint (shown only where the table allows it).
     pub show_odds: bool,
@@ -310,11 +328,13 @@ impl App {
         let setup = Setup {
             host: false,
             row: 0,
-            seats: config.game.seats,
-            fill_with_bots: config.game.fill_with_bots,
-            rules: config.game.rules.clone(),
-            fluctuation: config.game.fluctuation.enabled,
-            allow_win_chance: config.game.allow_win_chance,
+            table: 0,
+            tables: config.tables.len(),
+            seats: config.tables[0].seats,
+            fill_with_bots: config.tables[0].fill_with_bots,
+            rules: config.tables[0].rules.clone(),
+            fluctuation: config.tables[0].fluctuation.enabled,
+            allow_win_chance: config.tables[0].allow_win_chance,
         };
         let join = Join {
             name: config.client.resolved_name(),
@@ -389,7 +409,12 @@ impl App {
     /// The chosen game speed. (`speed` is always a valid index: it starts from
     /// a checked configuration and only moves with `cycle`.)
     pub fn speed(&self) -> &SpeedConfig {
-        &self.config.game.speeds[self.speed]
+        &self.config.speeds[self.speed]
+    }
+
+    /// The `[[tables]]` entry chosen on the setup screen.
+    pub fn table(&self) -> &TableConfig {
+        &self.config.tables[self.setup.table]
     }
 
     /// Values the help and the style window quote: the style estimate's
@@ -399,9 +424,7 @@ impl App {
             style_min_hands: self.config.client.style_min_hands,
             style_min_stack_bb: self
                 .view()
-                .map_or(self.config.game.style_min_stack_bb, |v| {
-                    v.stats_min_stack_bb
-                }),
+                .map_or(self.table().style_min_stack_bb, |v| v.stats_min_stack_bb),
         }
     }
 

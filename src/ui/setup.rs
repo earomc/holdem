@@ -38,6 +38,12 @@ fn setup_row_text(app: &App, row: SetupRow) -> (&'static str, String, String) {
             "Type your name for this table; the default comes from client.name in holdem.toml."
                 .to_string(),
         ),
+        SetupRow::Table => (
+            "Table",
+            app.table().name.clone(),
+            "Start from one of the tables in holdem.toml; the rows below can still be changed."
+                .to_string(),
+        ),
         SetupRow::Seats => (
             "Seats",
             if s.host {
@@ -178,7 +184,8 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
         lines.push(Line::from(Span::styled(
             format!(
                 " Hosting as \"{}\" on port {} (change both in holdem.toml).",
-                app.config.server.name, app.config.server.port
+                app.table().name,
+                app.config.network.port
             ),
             dim(),
         )));

@@ -7,13 +7,14 @@
 //! the defaults ([`template`]), and the game saves the settings you change in it
 //! when you ask it to ([`save()`]).
 //!
-//! The file has three parts, by who reads them:
+//! The file has these parts:
 //!
 //! * `[client]`: only your own screen and keys (name, sound, the values
 //!   offered on the setup screen, joining other tables).
-//! * `[game]`: how a table run by this program plays: seats, bots, speeds,
-//!   rules. Used for solo games, hosted games and `holdem serve` alike.
-//! * `[server]`: network play only: table name, port, time limits.
+//! * `[network]`: the port for hosting, `holdem serve` and joining.
+//! * `[bots]` and `[[speeds]]`: shared by every table.
+//! * `[[tables]]`: one or more tables, each with its seats, rules, time limits.
+//!   At home they are presets on the setup screen; `holdem serve` runs them all.
 //!
 //! What is configurable: everything about the game's design. What is not: the
 //! internals of algorithms (how bots weigh their decisions, the hand evaluator,
@@ -41,16 +42,20 @@ mod save;
 pub use error::Error;
 pub use load::user_file;
 pub use render::{differences, render, template};
-pub use save::{SAVED_KEYS, SaveReport, save};
+pub use save::{SaveReport, save};
 
 pub const FILE_NAME: &str = "holdem.toml";
 
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Config {
     pub client: ClientConfig,
-    pub game: GameConfig,
-    pub server: ServerConfig,
+    pub network: NetworkConfig,
+    pub bots: BotConfig,
+    /// Game speeds, slowest first. Any number, with any names.
+    pub speeds: Vec<SpeedConfig>,
+    /// One or more tables: presets at home, all of them under `holdem serve`.
+    pub tables: Vec<TableConfig>,
 }
 
 // ------------------------------------------------------------------ [client]
@@ -61,7 +66,7 @@ pub struct Config {
 pub struct ClientConfig {
     /// Your name at the table; empty means your computer's login name.
     pub name: String,
-    /// Name of the speed to start with (one of `[[game.speeds]]`).
+    /// Name of the speed to start with (one of `[[speeds]]`).
     pub speed: String,
     /// Show the win-chance hint where the table allows it.
     pub win_chance_hint: bool,
@@ -117,29 +122,14 @@ pub struct JoinConfig {
     pub discovery_wait_ms: u32,
 }
 
-// ------------------------------------------------------------------ [game]
+// ------------------------------------------------------------------ shared
 
-/// How a table run by this program plays (solo, hosted or `holdem serve`).
+/// Network play: hosting from the menu, `holdem serve` and joining.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
-pub struct GameConfig {
-    /// Seats at the table, 2 to 9.
-    pub seats: usize,
-    /// Seats that people do not take are given to bots.
-    pub fill_with_bots: bool,
-    /// Players may turn on the win-chance hint.
-    pub allow_win_chance: bool,
-    /// Pause between the streets of an all-in run-out, in percent of the game speed.
-    pub runout_pace_percent: u32,
-    /// Hands started with fewer big blinds do not count for the style estimate.
-    pub style_min_stack_bb: u32,
-    /// Game speeds, slowest first. Any number, with any names.
-    pub speeds: Vec<SpeedConfig>,
-    pub bots: BotConfig,
-    /// Not `deny_unknown_fields` (rules also travel over the network); typos are
-    /// caught by [`Config::parse`] instead.
-    pub rules: Rules,
-    pub fluctuation: FluctuationConfig,
+pub struct NetworkConfig {
+    /// Port to listen on; also the port the join screen assumes and searches.
+    pub port: u16,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -159,6 +149,40 @@ pub struct BotConfig {
     pub thinking_samples: u32,
 }
 
+// ------------------------------------------------------------------ [[tables]]
+
+/// One table (`[[tables]]`): a preset on the setup screen, and one of the
+/// tables of `holdem serve`. Everything left out keeps its default.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct TableConfig {
+    /// The table's name, shown to players; it also tells the tables apart.
+    pub name: String,
+    /// Seats at the table, 2 to 9.
+    pub seats: usize,
+    /// Seats that people do not take are given to bots.
+    pub fill_with_bots: bool,
+    /// The speed under `holdem serve` (one of `[[speeds]]`); at home your own
+    /// `client.speed` is used.
+    pub speed: String,
+    /// Players may turn on the win-chance hint.
+    pub allow_win_chance: bool,
+    /// Pause between the streets of an all-in run-out, in percent of the game speed.
+    pub runout_pace_percent: u32,
+    /// Hands started with fewer big blinds do not count for the style estimate.
+    pub style_min_stack_bb: u32,
+    /// Seconds a person has to act when several people play (0 = no limit).
+    pub turn_seconds: u32,
+    /// Seconds after a hand before the next one starts by itself (0 = wait for everyone).
+    pub next_hand_seconds: u32,
+    /// Seconds before a disconnected player's turn is folded for them.
+    pub away_seconds: u32,
+    /// Not `deny_unknown_fields` (rules also travel over the network); typos are
+    /// caught by [`Config::parse`] instead.
+    pub rules: Rules,
+    pub fluctuation: FluctuationConfig,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct FluctuationConfig {
@@ -170,58 +194,31 @@ pub struct FluctuationConfig {
     pub join_chance: f64,
 }
 
-// ------------------------------------------------------------------ [server]
-
-/// Network play: hosting from the menu and `holdem serve`.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(default, deny_unknown_fields)]
-pub struct ServerConfig {
-    /// Name shown to people looking for a game.
-    pub name: String,
-    /// Port to listen on; also the port the join screen assumes and searches.
-    pub port: u16,
-    /// Speed of `holdem serve` (one of `[[game.speeds]]`).
-    pub speed: String,
-    /// Seconds a person has to act when several people play (0 = no limit).
-    pub turn_seconds: u32,
-    /// Seconds after a hand before the next one starts by itself (0 = wait for everyone).
-    pub next_hand_seconds: u32,
-    /// Seconds before a disconnected player's turn is folded for them.
-    pub away_seconds: u32,
-    /// Several tables for `holdem serve`, all on `port`. Empty: one table
-    /// called `name`.
-    pub tables: Vec<TableConfig>,
-}
-
-/// One of the tables of `holdem serve` (`[[server.tables]]`). What is left
-/// out comes from `[game]` and `[server]`.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct TableConfig {
-    /// The table's name, shown to players; it also tells the tables apart.
-    pub name: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub seats: Option<usize>,
-    /// One of `[[game.speeds]]`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub speed: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub fill_with_bots: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub starting_chips: Option<u32>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub small_blind: Option<u32>,
-}
-
 // ------------------------------------------------------------------ defaults
 
-/// The speed both the client and the server start with.
+/// The speed both the client and the tables start with.
 const DEFAULT_SPEED: &str = "Normal";
 
 fn speed(name: &str, ms: u32) -> SpeedConfig {
     SpeedConfig {
         name: name.to_string(),
         ms,
+    }
+}
+
+impl Default for Config {
+    fn default() -> Config {
+        Config {
+            client: ClientConfig::default(),
+            network: NetworkConfig::default(),
+            bots: BotConfig::default(),
+            speeds: vec![
+                speed("Slow", 1100),
+                speed(DEFAULT_SPEED, 650),
+                speed("Fast", 220),
+            ],
+            tables: vec![TableConfig::default()],
+        }
     }
 }
 
@@ -275,23 +272,9 @@ impl Default for JoinConfig {
     }
 }
 
-impl Default for GameConfig {
-    fn default() -> GameConfig {
-        GameConfig {
-            seats: 6,
-            fill_with_bots: true,
-            allow_win_chance: true,
-            runout_pace_percent: 150,
-            style_min_stack_bb: MIN_STACK_BB,
-            speeds: vec![
-                speed("Slow", 1100),
-                speed(DEFAULT_SPEED, 650),
-                speed("Fast", 220),
-            ],
-            bots: BotConfig::default(),
-            rules: Rules::default(),
-            fluctuation: FluctuationConfig::default(),
-        }
+impl Default for NetworkConfig {
+    fn default() -> NetworkConfig {
+        NetworkConfig { port: DEFAULT_PORT }
     }
 }
 
@@ -307,26 +290,31 @@ impl Default for BotConfig {
     }
 }
 
+impl Default for TableConfig {
+    fn default() -> TableConfig {
+        TableConfig {
+            name: "Hold'em table".to_string(),
+            seats: 6,
+            fill_with_bots: true,
+            speed: DEFAULT_SPEED.to_string(),
+            allow_win_chance: true,
+            runout_pace_percent: 150,
+            style_min_stack_bb: MIN_STACK_BB,
+            turn_seconds: 30,
+            next_hand_seconds: 8,
+            away_seconds: 1,
+            rules: Rules::default(),
+            fluctuation: FluctuationConfig::default(),
+        }
+    }
+}
+
 impl Default for FluctuationConfig {
     fn default() -> FluctuationConfig {
         FluctuationConfig {
             enabled: false,
             leave_chance: 0.04,
             join_chance: 0.25,
-        }
-    }
-}
-
-impl Default for ServerConfig {
-    fn default() -> ServerConfig {
-        ServerConfig {
-            name: "Hold'em table".to_string(),
-            port: DEFAULT_PORT,
-            speed: DEFAULT_SPEED.to_string(),
-            turn_seconds: 30,
-            next_hand_seconds: 8,
-            away_seconds: 1,
-            tables: Vec::new(),
         }
     }
 }
@@ -347,80 +335,62 @@ impl ClientConfig {
     }
 }
 
+impl TableConfig {
+    /// How bots come and go at this table, when they do.
+    pub fn fluctuation(&self) -> Fluctuation {
+        Fluctuation {
+            leave_chance: self.fluctuation.leave_chance as f32,
+            join_chance: self.fluctuation.join_chance as f32,
+        }
+    }
+}
+
 impl Config {
-    /// Position of a speed in `game.speeds`, by name (case does not matter).
+    /// Position of a speed in `speeds`, by name (case does not matter).
     pub fn speed_index(&self, name: &str) -> Option<usize> {
-        self.game
-            .speeds
+        self.speeds
             .iter()
             .position(|s| s.name.eq_ignore_ascii_case(name.trim()))
     }
 
-    pub fn fluctuation(&self) -> Fluctuation {
-        Fluctuation {
-            leave_chance: self.game.fluctuation.leave_chance as f32,
-            join_chance: self.game.fluctuation.join_chance as f32,
-        }
-    }
-
-    /// Table settings from this file, for a table running at `speed_ms`.
-    pub fn table_settings(&self, name: &str, speed_ms: u32, network: bool) -> TableSettings {
-        let g = &self.game;
-        TableSettings {
-            name: name.to_string(),
-            seats: g.seats,
-            fill_with_bots: g.fill_with_bots,
-            rules: g.rules.clone(),
-            fluctuation: g.fluctuation.enabled.then(|| self.fluctuation()),
-            bot_names: g.bots.names.clone(),
-            speed_ms,
-            turn_seconds: if network { self.server.turn_seconds } else { 0 },
-            next_hand_seconds: if network {
-                self.server.next_hand_seconds
-            } else {
-                0
-            },
-            away_seconds: self.server.away_seconds,
-            runout_pace_percent: g.runout_pace_percent,
-            allow_win_chance: g.allow_win_chance,
-            bot_samples: g.bots.thinking_samples,
-            stats_min_stack_bb: g.style_min_stack_bb,
-        }
-    }
-
     /// The speed called `name`, or the first speed if there is none by that
-    /// name. (A checked configuration has at least one speed, and its
-    /// `client.speed` and `server.speed` always name one.)
+    /// name. (A checked configuration has at least one speed, and every speed
+    /// it names is one of them.)
     pub fn speed(&self, name: &str) -> &SpeedConfig {
-        &self.game.speeds[self.speed_index(name).unwrap_or(0)]
+        &self.speeds[self.speed_index(name).unwrap_or(0)]
     }
 
-    /// The tables of `holdem serve`: one per `[[server.tables]]` entry, or one
-    /// called `server.name` when there are none.
-    pub fn server_tables(&self) -> Vec<TableSettings> {
-        let table = |name: &str, speed: &str| self.table_settings(name, self.speed(speed).ms, true);
-        if self.server.tables.is_empty() {
-            return vec![table(&self.server.name, &self.server.speed)];
+    /// The settings of `table`, running at `speed_ms`; `network` adds the time
+    /// limits that only matter when several people play.
+    pub fn table_settings(
+        &self,
+        table: &TableConfig,
+        speed_ms: u32,
+        network: bool,
+    ) -> TableSettings {
+        TableSettings {
+            name: table.name.clone(),
+            seats: table.seats,
+            fill_with_bots: table.fill_with_bots,
+            rules: table.rules.clone(),
+            fluctuation: table.fluctuation.enabled.then(|| table.fluctuation()),
+            bot_names: self.bots.names.clone(),
+            speed_ms,
+            turn_seconds: if network { table.turn_seconds } else { 0 },
+            next_hand_seconds: if network { table.next_hand_seconds } else { 0 },
+            away_seconds: table.away_seconds,
+            runout_pace_percent: table.runout_pace_percent,
+            allow_win_chance: table.allow_win_chance,
+            bot_samples: self.bots.thinking_samples,
+            stats_min_stack_bb: table.style_min_stack_bb,
         }
-        self.server
-            .tables
+    }
+
+    /// The tables of `holdem serve`: every `[[tables]]` entry, each at its speed.
+    pub fn server_tables(&self) -> Vec<TableSettings> {
+        self.tables
             .iter()
-            .map(|t| {
-                let mut s = table(&t.name, t.speed.as_deref().unwrap_or(&self.server.speed));
-                if let Some(seats) = t.seats {
-                    s.seats = seats;
-                }
-                if let Some(bots) = t.fill_with_bots {
-                    s.fill_with_bots = bots;
-                }
-                if let Some(chips) = t.starting_chips {
-                    s.rules.starting_chips = chips;
-                }
-                if let Some(blind) = t.small_blind {
-                    s.rules.small_blind = blind;
-                }
-                s
-            })
+            .map(|t| self.table_settings(t, self.speed(&t.speed).ms, true))
             .collect()
     }
 }
@@ -437,20 +407,26 @@ mod tests {
     fn differences_name_the_changed_settings() {
         assert!(differences(&Config::default()).is_empty());
         let c = Config::parse(
-            "[game.rules]\nantes = true\n[client.sound]\nvolume = 5\n\
-             [[game.speeds]]\nname = \"Only\"\nms = 300\n[client]\nspeed = \"Only\"\n\
-             [server]\nspeed = \"only\"",
+            r#"
+[client]
+speed = "Only"
+[client.sound]
+volume = 5
+
+[[speeds]]
+name = "Only"
+ms = 300
+
+[[tables]]
+speed = "only"
+[tables.rules]
+antes = true
+"#,
         )
         .unwrap();
         assert_eq!(
             differences(&c),
-            [
-                "client.speed",
-                "client.sound.volume",
-                "game.speeds",
-                "game.rules.antes",
-                "server.speed"
-            ]
+            ["client.speed", "client.sound.volume", "speeds", "tables"]
         );
     }
 
@@ -464,8 +440,16 @@ mod tests {
                     format!("{prefix}.{k}")
                 };
                 out.push((p.clone(), v.clone()));
-                if let toml::Value::Table(sub) = v {
-                    walk(&p, sub, out);
+                match v {
+                    toml::Value::Table(sub) => walk(&p, sub, out),
+                    // A list whose entries are explained setting by setting
+                    // ([[tables]], not [[speeds]]): the settings of an entry.
+                    toml::Value::Array(items) if !doc(&format!("{p}.name")).is_empty() => {
+                        if let Some(toml::Value::Table(first)) = items.first() {
+                            walk(&p, first, out);
+                        }
+                    }
+                    _ => {}
                 }
             }
         }
@@ -508,7 +492,7 @@ mod tests {
     #[test]
     fn the_file_shows_current_values_and_notes_the_defaults() {
         let mut c = Config::default();
-        c.game.rules.antes = true;
+        c.tables[0].rules.antes = true;
         c.client.sound.volume = 35;
         let text = render(&c);
         assert!(
@@ -529,62 +513,78 @@ mod tests {
     #[test]
     fn partial_files_keep_the_other_defaults() {
         let c = Config::parse(
-            "[game.bots]\nnames = [\"Rex\", \"Ola\"]\n\n[[game.speeds]]\nname = \"Turbo\"\nms = 50\n\n[client]\nspeed = \"turbo\"\n[server]\nspeed = \"Turbo\"\n",
+            r#"
+[client]
+speed = "turbo"
+
+[bots]
+names = ["Rex", "Ola"]
+
+[[speeds]]
+name = "Turbo"
+ms = 50
+
+[[tables]]
+speed = "Turbo"
+"#,
         )
         .unwrap();
-        assert_eq!(c.game.bots.names, vec!["Rex", "Ola"]);
-        assert_eq!(c.game.speeds.len(), 1);
+        assert_eq!(c.bots.names, vec!["Rex", "Ola"]);
+        assert_eq!(c.speeds.len(), 1);
         assert_eq!(c.speed_index("TURBO"), Some(0));
-        assert_eq!(c.game.rules, Rules::default());
+        assert_eq!(c.tables[0].rules, Rules::default());
+        assert_eq!(c.tables[0].name, "Hold'em table");
         assert_eq!(c.server_tables()[0].speed_ms, 50);
     }
 
     #[test]
     fn mistakes_are_reported() {
         let bad = [
-            "[[game.speeds]]\nname = \"x\"\nms = 1\n[client]\nspeed = \"x\"\n[server]\nspeed = \"x\"\n",
+            "[[speeds]]\nname = \"x\"\nms = 1\n[client]\nspeed = \"x\"\n[[tables]]\nspeed = \"x\"\n",
             "[client]\nspeed = \"Warp\"\n",
-            "[server]\nspeed = \"Warp\"\n",
-            "[game]\nseats = 12\n",
+            "[[tables]]\nspeed = \"Warp\"\n",
+            "[[tables]]\nseats = 12\n",
             "[client.sound]\nvolume = 300\n",
             "[client.setup]\nstarting_chips = []\n",
             "[client.setup]\nsmall_blinds = [0, 5]\n",
-            "[game.rules]\nblind_schedule = []\n",
-            "[game.rules]\nblind_growth_percent = 50\n",
-            "[game.rules]\nstraddle_multiplier = 1\n",
+            "[[tables]]\n[tables.rules]\nblind_schedule = []\n",
+            "[[tables]]\n[tables.rules]\nblind_growth_percent = 50\n",
+            "[[tables]]\n[tables.rules]\nstraddle_multiplier = 1\n",
+            "tables = []\n",
             // Typos are errors instead of being silently ignored.
             "[client.sound]\nvolum = 100\n",
-            "[game.rules]\nantez = true\n",
+            "[[tables]]\n[tables.rules]\nantez = true\n",
             "not toml at all [",
         ];
         for text in bad {
             assert!(Config::parse(text).is_err(), "accepted: {text}");
         }
-        let e = Config::parse("[game.rules]\nantez = true\n")
+        let e = Config::parse("[[tables]]\n[tables.rules]\nantez = true\n")
             .unwrap_err()
             .to_string();
         assert!(e.contains("antez") && e.contains("ante_divisor"), "{}", e);
         // A file from an older holdem gets a hint about the new format.
-        let e = Config::parse("[speed]\nfast_ms = 100\n")
+        let e = Config::parse("[game]\nseats = 4\n")
             .unwrap_err()
             .to_string();
         assert!(e.contains("config write"), "{}", e);
     }
 
     #[test]
-    fn several_server_tables() {
+    fn several_tables() {
         let c = Config::default();
         let one = c.server_tables();
-        assert_eq!(one.len(), 1, "without entries, one table");
+        assert_eq!(one.len(), 1, "by default, one table");
         assert_eq!(one[0].name, "Hold'em table");
 
         let c = Config::parse(
             r#"
-[[server.tables]]
+[[tables]]
 name = "Low"
+[tables.rules]
 small_blind = 5
 
-[[server.tables]]
+[[tables]]
 name = "Turbo"
 speed = "Fast"
 seats = 4
@@ -595,17 +595,17 @@ seats = 4
         assert_eq!(tables.len(), 2);
         assert_eq!(tables[0].name, "Low");
         assert_eq!(tables[0].rules.small_blind, 5);
-        assert_eq!(tables[0].seats, c.game.seats, "the rest comes from [game]");
+        assert_eq!(tables[0].seats, 6, "what is left out keeps its default");
         assert_eq!(tables[1].seats, 4);
         assert_eq!(tables[1].speed_ms, c.speed("Fast").ms);
 
-        let table = |extra: &str| format!("[[server.tables]]\nname = \"A\"\n{extra}");
+        let table = |extra: &str| format!("[[tables]]\nname = \"A\"\n{extra}");
         for bad in [
             format!("{}\n{}", table(""), table("")),
-            "[[server.tables]]\nname = \" \"\n".to_string(),
+            "[[tables]]\nname = \" \"\n".to_string(),
             table("speed = \"Warp\"\n"),
             table("seats = 12\n"),
-            table("small_blind = 0\n"),
+            table("[tables.rules]\nsmall_blind = 0\n"),
             table("antes = true\n"),
         ] {
             assert!(Config::parse(&bad).is_err(), "accepted: {bad}");
@@ -631,17 +631,17 @@ seats = 4
     #[test]
     fn table_settings_follow_the_file() {
         let mut c = Config::default();
-        c.game.allow_win_chance = false;
-        c.game.bots.thinking_samples = 99;
-        c.game.style_min_stack_bb = 20;
-        c.server.speed = "Fast".to_string();
+        c.tables[0].allow_win_chance = false;
+        c.bots.thinking_samples = 99;
+        c.tables[0].style_min_stack_bb = 20;
+        c.tables[0].speed = "Fast".to_string();
         let s = c.server_tables().remove(0);
         assert!(!s.allow_win_chance);
         assert_eq!(s.bot_samples, 99);
         assert_eq!(s.stats_min_stack_bb, 20);
         assert_eq!(s.speed_ms, 220);
         assert_eq!(s.turn_seconds, 30);
-        let solo = c.table_settings("Solo", 220, false);
+        let solo = c.table_settings(&c.tables[0], 220, false);
         assert_eq!((solo.turn_seconds, solo.next_hand_seconds), (0, 0));
     }
 }

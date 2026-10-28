@@ -5,7 +5,7 @@ use holdem::config::Config;
 use super::{H, P, Page, T};
 
 pub(super) fn page(d: &Config) -> Page {
-    let steps = d.game.rules.level_steps();
+    let steps = d.tables[0].rules.level_steps();
     Page {
         title: "Betting rules",
         items: vec![

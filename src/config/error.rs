@@ -60,9 +60,9 @@ mod tests {
 
     #[test]
     fn each_problem_has_its_kind_and_names_the_file() {
-        let typo = Config::parse("[game]\nseatz = 4\n").unwrap_err();
+        let typo = Config::parse("[[tables]]\nseatz = 4\n").unwrap_err();
         assert!(matches!(typo, Error::Parse(_)), "{typo:?}");
-        let range = Config::parse("[game]\nseats = 1\n").unwrap_err();
+        let range = Config::parse("[[tables]]\nseats = 1\n").unwrap_err();
         assert!(matches!(range, Error::Invalid(_)), "{range:?}");
         let path = Path::new("no/such/holdem.toml");
         let missing = Config::read(path).unwrap_err();

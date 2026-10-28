@@ -142,7 +142,7 @@ fn screenshots() {
     let mut config = Config::default();
     config.client.name = "You".to_string();
     // The usual speed's name on screen, but quick bots.
-    for speed in &mut config.game.speeds {
+    for speed in &mut config.speeds {
         speed.ms = 20;
     }
     let mut app = App::new(config, Some(7), Sound::silent());

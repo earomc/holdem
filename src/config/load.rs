@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use super::{Config, Error, FILE_NAME};
+use super::{Config, Error, FILE_NAME, TableConfig};
 use crate::game::{MAX_PLAYERS, MIN_PLAYERS, Rules};
 
 /// `holdem.toml` in your own settings folder: `%APPDATA%\holdem` on Windows,
@@ -25,27 +25,28 @@ pub fn user_file() -> Option<PathBuf> {
     Some(dir.join("holdem").join(FILE_NAME))
 }
 
-/// Settings in `[game.rules]` that the file may contain (Rules itself ignores
+/// Settings in `[tables.rules]` that the file may contain (Rules itself ignores
 /// unknown fields, because it also travels over the network).
 fn check_rule_keys(text: &str) -> Result<(), String> {
     let value: toml::Table = toml::from_str(text).map_err(|e| e.to_string())?;
-    let Some(rules) = value
-        .get("game")
-        .and_then(|g| g.get("rules"))
-        .and_then(|r| r.as_table())
-    else {
+    let Some(tables) = value.get("tables").and_then(|t| t.as_array()) else {
         return Ok(());
     };
     let known = toml::Table::try_from(Rules::default()).map_err(|e| e.to_string())?;
-    for key in rules.keys() {
-        if !known.contains_key(key) {
-            let mut names: Vec<&str> = known.keys().map(std::string::String::as_str).collect();
-            names.sort();
-            return Err(format!(
-                "unknown setting `{}` in [game.rules]; the settings there are: {}",
-                key,
-                names.join(", ")
-            ));
+    for rules in tables
+        .iter()
+        .filter_map(|t| t.get("rules").and_then(|r| r.as_table()))
+    {
+        for key in rules.keys() {
+            if !known.contains_key(key) {
+                let mut names: Vec<&str> = known.keys().map(String::as_str).collect();
+                names.sort();
+                return Err(format!(
+                    "unknown setting `{}` in [tables.rules]; the settings there are: {}",
+                    key,
+                    names.join(", ")
+                ));
+            }
         }
     }
     Ok(())
@@ -57,6 +58,51 @@ fn check_list(name: &str, values: &[u32], allow_zero: bool) -> Result<(), String
     }
     if !allow_zero && values.contains(&0) {
         return Err(format!("client.setup.{name} must not contain 0"));
+    }
+    Ok(())
+}
+
+/// The checks of one `[[tables]]` entry; messages start with the table's name.
+fn check_table(config: &Config, t: &TableConfig) -> Result<(), String> {
+    let name = t.name.trim();
+    let fail = |what: String| Err(format!("table \"{name}\": {what}"));
+    if !(MIN_PLAYERS..=MAX_PLAYERS).contains(&t.seats) {
+        return fail(format!(
+            "seats must be between {MIN_PLAYERS} and {MAX_PLAYERS}"
+        ));
+    }
+    if config.speed_index(&t.speed).is_none() {
+        let names: Vec<&str> = config.speeds.iter().map(|s| s.name.as_str()).collect();
+        return fail(format!(
+            "speed \"{}\" is not one of the speeds: {}",
+            t.speed,
+            names.join(", ")
+        ));
+    }
+    let r = &t.rules;
+    if r.starting_chips == 0 || r.small_blind == 0 {
+        return fail("rules.starting_chips and small_blind must be above 0".to_string());
+    }
+    if r.blind_schedule.is_empty() || r.blind_schedule.contains(&0) {
+        return fail("rules.blind_schedule needs at least one level, none of them 0".to_string());
+    }
+    if r.blind_growth_percent < 100 {
+        return fail("rules.blind_growth_percent must be at least 100".to_string());
+    }
+    if r.ante_divisor == 0 {
+        return fail("rules.ante_divisor must be at least 1".to_string());
+    }
+    if r.straddle_multiplier < 2 {
+        return fail("rules.straddle_multiplier must be at least 2".to_string());
+    }
+    if !(3..=MAX_PLAYERS).contains(&r.straddle_min_players) {
+        return fail(format!(
+            "rules.straddle_min_players must be between 3 and {MAX_PLAYERS}"
+        ));
+    }
+    let f = &t.fluctuation;
+    if !(0.0..=1.0).contains(&f.leave_chance) || !(0.0..=1.0).contains(&f.join_chance) {
+        return fail("fluctuation chances must be between 0 and 1".to_string());
     }
     Ok(())
 }
@@ -76,11 +122,10 @@ impl Config {
     }
 
     pub(super) fn check(&self) -> Result<(), String> {
-        let g = &self.game;
-        if g.speeds.is_empty() {
-            return Err("at least one [[game.speeds]] entry is needed".to_string());
+        if self.speeds.is_empty() {
+            return Err("at least one [[speeds]] entry is needed".to_string());
         }
-        for s in &g.speeds {
+        for s in &self.speeds {
             if s.name.trim().is_empty() {
                 return Err("every speed needs a name".to_string());
             }
@@ -91,27 +136,21 @@ impl Config {
                 ));
             }
         }
-        for (i, a) in g.speeds.iter().enumerate() {
-            if g.speeds[..i]
+        for (i, a) in self.speeds.iter().enumerate() {
+            if self.speeds[..i]
                 .iter()
                 .any(|b| b.name.eq_ignore_ascii_case(&a.name))
             {
                 return Err(format!("the speed name \"{}\" is used twice", a.name));
             }
         }
-        let names: Vec<&str> = g.speeds.iter().map(|s| s.name.as_str()).collect();
-        for (setting, value) in [
-            ("client.speed", &self.client.speed),
-            ("server.speed", &self.server.speed),
-        ] {
-            if self.speed_index(value).is_none() {
-                return Err(format!(
-                    "{} \"{}\" is not one of the speeds: {}",
-                    setting,
-                    value,
-                    names.join(", ")
-                ));
-            }
+        if self.speed_index(&self.client.speed).is_none() {
+            let names: Vec<&str> = self.speeds.iter().map(|s| s.name.as_str()).collect();
+            return Err(format!(
+                "client.speed \"{}\" is not one of the speeds: {}",
+                self.client.speed,
+                names.join(", ")
+            ));
         }
         let c = &self.client;
         if c.hint_samples == 0 || c.hint_samples > 100_000 {
@@ -137,75 +176,26 @@ impl Config {
         if c.join.connect_seconds == 0 || c.join.discovery_seconds == 0 {
             return Err("client.join times must be at least 1 second".to_string());
         }
-        if !(MIN_PLAYERS..=MAX_PLAYERS).contains(&g.seats) {
-            return Err(format!(
-                "game.seats must be between {MIN_PLAYERS} and {MAX_PLAYERS}"
-            ));
+        if self.bots.names.iter().any(|n| n.trim().is_empty()) {
+            return Err("bots.names must not contain empty names".to_string());
         }
-        if g.bots.names.iter().any(|n| n.trim().is_empty()) {
-            return Err("game.bots.names must not contain empty names".to_string());
+        if self.bots.thinking_samples == 0 || self.bots.thinking_samples > 100_000 {
+            return Err("bots.thinking_samples must be between 1 and 100000".to_string());
         }
-        if g.bots.thinking_samples == 0 || g.bots.thinking_samples > 100_000 {
-            return Err("game.bots.thinking_samples must be between 1 and 100000".to_string());
+        if self.tables.is_empty() {
+            return Err("at least one [[tables]] entry is needed".to_string());
         }
-        let r = &g.rules;
-        if r.starting_chips == 0 || r.small_blind == 0 {
-            return Err("game.rules.starting_chips and small_blind must be above 0".to_string());
-        }
-        if r.blind_schedule.is_empty() || r.blind_schedule.contains(&0) {
-            return Err(
-                "game.rules.blind_schedule needs at least one level, none of them 0".to_string(),
-            );
-        }
-        if r.blind_growth_percent < 100 {
-            return Err("game.rules.blind_growth_percent must be at least 100".to_string());
-        }
-        if r.ante_divisor == 0 {
-            return Err("game.rules.ante_divisor must be at least 1".to_string());
-        }
-        if r.straddle_multiplier < 2 {
-            return Err("game.rules.straddle_multiplier must be at least 2".to_string());
-        }
-        if !(3..=MAX_PLAYERS).contains(&r.straddle_min_players) {
-            return Err(format!(
-                "game.rules.straddle_min_players must be between 3 and {MAX_PLAYERS}"
-            ));
-        }
-        let f = &g.fluctuation;
-        let mut tables: Vec<&str> = Vec::new();
-        for t in &self.server.tables {
+        let mut names: Vec<&str> = Vec::new();
+        for t in &self.tables {
             let name = t.name.trim();
             if name.is_empty() {
-                return Err("every [[server.tables]] entry needs a name".to_string());
+                return Err("every [[tables]] entry needs a name".to_string());
             }
-            if tables.contains(&name) {
-                return Err(format!(
-                    "the table name \"{name}\" is used twice in [[server.tables]]"
-                ));
+            if names.contains(&name) {
+                return Err(format!("the table name \"{name}\" is used twice"));
             }
-            tables.push(name);
-            if let Some(speed) = &t.speed
-                && self.speed_index(speed).is_none()
-            {
-                return Err(format!(
-                    "the table \"{name}\" has the speed \"{speed}\", which is not in [[game.speeds]]"
-                ));
-            }
-            if t.seats
-                .is_some_and(|s| !(MIN_PLAYERS..=MAX_PLAYERS).contains(&s))
-            {
-                return Err(format!(
-                    "the table \"{name}\" must have {MIN_PLAYERS} to {MAX_PLAYERS} seats"
-                ));
-            }
-            if t.starting_chips == Some(0) || t.small_blind == Some(0) {
-                return Err(format!(
-                    "the table \"{name}\": starting_chips and small_blind must be above 0"
-                ));
-            }
-        }
-        if !(0.0..=1.0).contains(&f.leave_chance) || !(0.0..=1.0).contains(&f.join_chance) {
-            return Err("game.fluctuation chances must be between 0 and 1".to_string());
+            names.push(name);
+            check_table(self, t)?;
         }
         Ok(())
     }

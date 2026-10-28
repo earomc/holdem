@@ -91,11 +91,16 @@ fn is_table_array(v: &toml::Value) -> bool {
     matches!(v, toml::Value::Array(a) if !a.is_empty() && a.iter().all(toml::Value::is_table))
 }
 
-/// Lists of `[[tables]]` that may be empty. Empty, they are written as their
-/// explanation only: `tables = []` would clash with entries added below it.
-const TABLE_LISTS: &[&str] = &["server.tables"];
-
-fn render_table(out: &mut String, path: &str, table: &toml::Table, defaults: &toml::Table) {
+/// Writes `table` (at dotted `path`). With `explain`, every setting gets its
+/// description and default; without, just its value (for the second and later
+/// entries of a list, which the first one already explains).
+fn render_table(
+    out: &mut String,
+    path: &str,
+    table: &toml::Table,
+    defaults: &toml::Table,
+    explain: bool,
+) {
     let join = |key: &str| {
         if path.is_empty() {
             key.to_string()
@@ -109,22 +114,17 @@ fn render_table(out: &mut String, path: &str, table: &toml::Table, defaults: &to
             .cloned()
             .unwrap_or(toml::Value::Boolean(false))
     };
-    // Plain settings first, then arrays of tables, then sub-tables (TOML needs that order).
+    // Plain settings first (TOML needs that), then the sections and lists in order.
     for (key, value) in table {
         if value.is_table() || is_table_array(value) {
             continue;
         }
-        if TABLE_LISTS.contains(&join(key).as_str()) && value.as_array().is_some_and(Vec::is_empty)
-        {
+        if explain {
             out.push('\n');
             comment(out, doc(&join(key)));
-            raw_comment(out, "Default: none");
-            continue;
+            let default_line = render_value("Default: ", &default_of(key), "          ");
+            raw_comment(out, &default_line);
         }
-        out.push('\n');
-        comment(out, doc(&join(key)));
-        let default_line = render_value("Default: ", &default_of(key), "          ");
-        raw_comment(out, &default_line);
         out.push_str(&render_value(
             &format!("{key} = "),
             value,
@@ -133,47 +133,63 @@ fn render_table(out: &mut String, path: &str, table: &toml::Table, defaults: &to
         out.push('\n');
     }
     for (key, value) in table {
-        let toml::Value::Array(items) = value else {
-            continue;
-        };
-        if !is_table_array(value) {
-            continue;
-        }
         let full = join(key);
-        out.push('\n');
-        comment(out, doc(&full));
-        raw_comment(
-            out,
-            &render_value("Default: ", &default_of(key), "          "),
-        );
-        for item in items {
-            if let toml::Value::Table(t) = item {
-                out.push_str(&format!("[[{full}]]\n"));
-                for (k, v) in t {
-                    out.push_str(&format!("{k} = {v}\n"));
-                }
+        match value {
+            toml::Value::Table(sub) => {
+                let empty = toml::Table::new();
+                let sub_defaults = match defaults.get(key) {
+                    Some(toml::Value::Table(t)) => t,
+                    _ => &empty,
+                };
                 out.push('\n');
+                if explain && path.is_empty() {
+                    out.push_str(&"#".repeat(WRAP));
+                    out.push('\n');
+                }
+                out.push_str(&format!("[{full}]\n"));
+                if explain {
+                    comment(out, doc(&full));
+                }
+                render_table(out, &full, sub, sub_defaults, explain);
             }
+            toml::Value::Array(items) if is_table_array(value) => {
+                out.push('\n');
+                if explain && path.is_empty() {
+                    out.push_str(&"#".repeat(WRAP));
+                    out.push('\n');
+                }
+                // A list whose entries have described settings (like [[tables]])
+                // explains them in its first entry; others (like [[speeds]]) are
+                // short enough to show their default whole.
+                let detailed = !doc(&format!("{full}.name")).is_empty();
+                if explain {
+                    comment(out, doc(&full));
+                    if !detailed {
+                        raw_comment(
+                            out,
+                            &render_value("Default: ", &default_of(key), "          "),
+                        );
+                    }
+                }
+                let empty = toml::Table::new();
+                let item_defaults = match defaults.get(key) {
+                    Some(toml::Value::Array(d)) => d.first().and_then(toml::Value::as_table),
+                    _ => None,
+                }
+                .unwrap_or(&empty);
+                for (i, item) in items.iter().enumerate() {
+                    let toml::Value::Table(t) = item else {
+                        continue;
+                    };
+                    if i > 0 || !detailed {
+                        out.push('\n');
+                    }
+                    out.push_str(&format!("[[{full}]]\n"));
+                    render_table(out, &full, t, item_defaults, explain && detailed && i == 0);
+                }
+            }
+            _ => {}
         }
-    }
-    for (key, value) in table {
-        let toml::Value::Table(sub) = value else {
-            continue;
-        };
-        let full = join(key);
-        let empty = toml::Table::new();
-        let sub_defaults = match defaults.get(key) {
-            Some(toml::Value::Table(t)) => t,
-            _ => &empty,
-        };
-        out.push('\n');
-        if !full.contains('.') {
-            out.push_str(&"#".repeat(WRAP));
-            out.push('\n');
-        }
-        out.push_str(&format!("[{full}]\n"));
-        comment(out, doc(&full));
-        render_table(out, &full, sub, sub_defaults);
     }
 }
 
@@ -189,12 +205,14 @@ pub fn render(config: &Config) -> String {
         "holdem settings. Every line is optional: delete anything you do not change,\n\
          and missing settings keep their defaults (which can improve in newer versions).\n\
          \n\
-         [client]  your own screen and keys only\n\
-         [game]    how tables run by this program play: solo games, games you host,\n\
-         \x20         and `holdem serve`\n\
-         [server]  network play: hosting and `holdem serve`",
+         [client]    your own screen and keys only\n\
+         [network]   the port for hosting, `holdem serve` and joining\n\
+         [bots]      bot names, and how hard they think\n\
+         [[speeds]]  the game speeds\n\
+         [[tables]]  one or more tables: presets on the setup screen at home, all of\n\
+         \x20           them at once under `holdem serve`",
     );
-    render_table(&mut out, "", &current, &defaults);
+    render_table(&mut out, "", &current, &defaults, true);
     out
 }
 

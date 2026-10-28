@@ -72,7 +72,8 @@ impl Default for TableSettings {
     /// time limits). The values come from [`Config::default`].
     fn default() -> TableSettings {
         let c = Config::default();
-        c.table_settings(&c.server.name, c.speed(&c.server.speed).ms, false)
+        let table = &c.tables[0];
+        c.table_settings(table, c.speed(&table.speed).ms, false)
     }
 }
 

@@ -15,13 +15,17 @@ use crate::session::{Kind, Session};
 use crate::sound::Cue;
 
 impl App {
+    /// The chosen table's settings with what the setup screen changed, at your
+    /// own speed.
     pub(super) fn table_settings(&self, name: &str) -> TableSettings {
         let st = &self.setup;
-        let mut t = self.config.table_settings(name, self.speed().ms, st.host);
+        let preset = self.table();
+        let mut t = self.config.table_settings(preset, self.speed().ms, st.host);
+        t.name = name.to_string();
         t.seats = st.seats;
         t.fill_with_bots = !st.host || st.fill_with_bots;
         t.rules = st.rules.clone();
-        t.fluctuation = st.fluctuation.then(|| self.config.fluctuation());
+        t.fluctuation = st.fluctuation.then(|| preset.fluctuation());
         t.allow_win_chance = st.allow_win_chance;
         t
     }
@@ -36,19 +40,19 @@ impl App {
     pub(super) fn start_game(&mut self) {
         let host = self.setup.host;
         let name = if host {
-            self.config.server.name.clone()
+            self.table().name.clone()
         } else {
             "Solo table".to_string()
         };
         let settings = self.table_settings(&name);
-        let port = host.then_some(self.config.server.port);
+        let port = host.then_some(self.config.network.port);
         let seed = self.seed();
         let server = match Server::start(settings, port, seed) {
             Ok(s) => s,
             Err(e) => {
                 self.notify(format!(
                     "Could not open port {}: {}. Is another table running? The port can be changed in holdem.toml.",
-                    self.config.server.port, e
+                    self.config.network.port, e
                 ));
                 return;
             }
@@ -88,7 +92,7 @@ impl App {
             return;
         }
         self.join_table = table;
-        let port = self.config.server.port;
+        let port = self.config.network.port;
         let timeout = Duration::from_secs(u64::from(self.config.client.join.connect_seconds));
         let (tx, rx) = mpsc::channel();
         thread::spawn(move || {
@@ -286,7 +290,7 @@ impl App {
             t.elapsed() >= Duration::from_secs(u64::from(self.config.client.join.discovery_seconds))
         });
         if self.discovery.is_none() && due {
-            let port = self.config.server.port;
+            let port = self.config.network.port;
             let wait = Duration::from_millis(u64::from(self.config.client.join.discovery_wait_ms));
             let (tx, rx) = mpsc::channel();
             thread::spawn(move || {

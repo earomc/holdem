@@ -7,12 +7,18 @@ All notable changes to holdem. The format follows
 ## [Unreleased]
 
 ### Added
-- One server, several tables: `holdem serve` runs every `[[server.tables]]` entry of
-  `holdem.toml` on the one port, each with its own name and, if you like, seats, speed,
-  starting chips, small blind and free seats. Players see each table on their join screen, or
-  choose from the server's list after typing its address. The log names the table.
+- One server, several tables: `holdem serve` runs every `[[tables]]` entry of `holdem.toml`
+  on the one port. Players see each table on their join screen, or choose from the server's
+  list after typing its address. The log names the table.
+- At home the tables are presets: with several, the setup screen gets a *Table* row that
+  fills in that table's settings, and `W` saves into the chosen table.
 
 ### Changed
+- The settings file is built around tables: `[client]`, `[network]` (the port), `[bots]`,
+  `[[speeds]]`, and one or more `[[tables]]` with `[tables.rules]` and `[tables.fluctuation]`.
+  Files from 0.7 or older (`[game]`, `[server]`) are refused with a hint:
+  `holdem config write new.toml` writes the new format.
+- Text in every box wraps instead of being cut off at the edge.
 - Network protocol 4 (holdem still speaks 3): players with holdem 0.7 or older can still join a
   server with several tables, and are seated at its first table.
 

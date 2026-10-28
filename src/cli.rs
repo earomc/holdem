@@ -63,10 +63,10 @@ pub(crate) fn cli() -> Command {
         }))
         .subcommand(
             Command::new("serve")
-                .about("Run a table that anyone can join, without playing yourself")
+                .about("Run tables that anyone can join, without playing yourself")
                 .after_help(
-                    "The table uses the [game] and [server] sections of the settings file; \
-                     the options above override single values.",
+                    "Runs every [[tables]] entry of the settings file on one port; the options \
+                     above override single values.",
                 )
                 .arg(
                     Arg::new("port")
@@ -74,20 +74,20 @@ pub(crate) fn cli() -> Command {
                         .short('p')
                         .value_name("NUMBER")
                         .value_parser(RangedU64ValueParser::<u16>::new())
-                        .help("Port to listen on, instead of server.port"),
+                        .help("Port to listen on, instead of network.port"),
                 )
                 .arg(
                     Arg::new("name")
                         .long("name")
                         .short('n')
                         .value_name("TEXT")
-                        .help("Table name, instead of server.name"),
+                        .help("Table name, instead of the name in [[tables]] (with one table)"),
                 )
                 .arg(
                     Arg::new("speed")
                         .long("speed")
                         .value_name("NAME")
-                        .help("Game speed (one of [[game.speeds]]), instead of server.speed"),
+                        .help("Game speed (one of [[speeds]]) for every table, instead of their own"),
                 ),
         )
         .subcommand(

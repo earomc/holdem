@@ -37,12 +37,12 @@ impl App {
         client.win_chance_hint = self.show_odds;
         client.sound.volume = self.sound.volume();
         let s = &self.setup;
-        let game = &mut c.game;
-        game.seats = s.seats;
-        game.fill_with_bots = s.fill_with_bots;
-        game.allow_win_chance = s.allow_win_chance;
-        game.fluctuation.enabled = s.fluctuation;
-        game.rules = s.rules.clone();
+        let table = &mut c.tables[s.table];
+        table.seats = s.seats;
+        table.fill_with_bots = s.fill_with_bots;
+        table.allow_win_chance = s.allow_win_chance;
+        table.fluctuation.enabled = s.fluctuation;
+        table.rules = s.rules.clone();
         c
     }
 
@@ -53,7 +53,7 @@ impl App {
             return;
         };
         let wanted = self.settings_as_config();
-        match config::save(&path, &wanted) {
+        match config::save(&path, &wanted, self.setup.table) {
             Ok(report) if report.changed.is_empty() => {
                 if path.exists() {
                     self.notify(format!("Already saved in {}", path.display()));
@@ -78,7 +78,7 @@ impl App {
     }
 
     pub(super) fn change_speed(&mut self, delta: i32) {
-        self.speed = cycle(self.speed, self.config.game.speeds.len(), delta);
+        self.speed = cycle(self.speed, self.config.speeds.len(), delta);
         let ms = self.speed().ms;
         if let Some(s) = self.session.as_ref()
             && s.is_owner()

@@ -51,13 +51,13 @@ fn draw_everything(app: &mut App) {
 
 fn fast_config() -> Config {
     let mut c = Config::default();
-    c.game.speeds.push(holdem::config::SpeedConfig {
+    c.speeds.push(holdem::config::SpeedConfig {
         name: "Test".to_string(),
         ms: 20,
     });
     c.client.speed = "Test".to_string();
-    c.server.port = 0; // any free port
-    c.server.next_hand_seconds = 1;
+    c.network.port = 0; // any free port
+    c.tables[0].next_hand_seconds = 1;
     c
 }
 
@@ -250,15 +250,15 @@ fn menus_render_at_every_size() {
 #[test]
 fn a_solo_game_renders_from_start_to_finish() {
     let mut config = fast_config();
-    config.game.rules.starting_chips = 1000;
-    config.game.rules.antes = true;
-    config.game.rules.straddle = true;
-    config.game.rules.rebuy_levels = 1;
-    config.game.rules.dead_button = true;
-    config.game.rules.muck_losers = true;
-    config.game.rules.hand_limit = 6;
-    config.game.seats = 9;
-    config.game.fluctuation.enabled = true;
+    config.tables[0].rules.starting_chips = 1000;
+    config.tables[0].rules.antes = true;
+    config.tables[0].rules.straddle = true;
+    config.tables[0].rules.rebuy_levels = 1;
+    config.tables[0].rules.dead_button = true;
+    config.tables[0].rules.muck_losers = true;
+    config.tables[0].rules.hand_limit = 6;
+    config.tables[0].seats = 9;
+    config.tables[0].fluctuation.enabled = true;
     let mut app = App::new(config, Some(3), Sound::new(true));
     app.setup.fluctuation = true;
     press(&mut app, KeyCode::Enter); // Play against bots

@@ -6,7 +6,7 @@ use super::{P, Page, number_word};
 use crate::keys::{self, Cmd, Place};
 
 pub(super) fn page(d: &Config) -> Page {
-    let rules = &d.game.rules;
+    let rules = &d.tables[0].rules;
     let settings = keys::key(Place::Table, Cmd::Settings);
     Page {
         title: "Glossary",

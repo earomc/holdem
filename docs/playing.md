@@ -21,7 +21,7 @@ port 7777 (or the port in `holdem.toml`) to your computer in your router.
 ### A server anyone can join
 
 `holdem serve` runs a table with no player of its own (for example on a computer that stays
-on), using the `[game]` and `[server]` settings of `holdem.toml`
+on), running every `[[tables]]` entry of `holdem.toml`
 ([Configuration](configuration.md)). `--port`, `--name` and `--speed` override single values,
 and on start-up it prints every setting it uses and the file they came from. After each game
 the table goes back to its lobby. [Running a server](server.md) covers
@@ -60,8 +60,8 @@ while any window (help, log, settings, style, leave) is open.
 
 ## Table options
 
-These can be changed on the setup screen. Their starting values come from `[game]` and
-`[game.rules]` in `holdem.toml` ([Configuration](configuration.md)). The optional rules are off by default; the win-chance hint is
+These can be changed on the setup screen. Their starting values come from the table chosen
+there, a `[[tables]]` entry of `holdem.toml` ([Configuration](configuration.md#tables)). The optional rules are off by default; the win-chance hint is
 allowed by default.
 
 | Option | What it does |
@@ -73,7 +73,7 @@ allowed by default.
 | Button rule | *Dead button*: the big blind moves exactly one player each hand, and the small blind and button follow it, even onto empty seats. Nobody skips a big blind when players leave. |
 | Showdown | *Losers may muck*: hands are shown in order (the last river bettor first) and players already beaten throw their cards away unseen. All-in hands are always shown. |
 | Win-chance hint | Whether players at the table may turn on the win-chance hint. When it is not allowed, the settings window shows that and it cannot be switched on. |
-| Players come and go | Bots leave now and then with their chips; new bots sit down in empty seats. The chances are in `[game.fluctuation]`. |
+| Players come and go | Bots leave now and then with their chips; new bots sit down in empty seats. The chances are in `[tables.fluctuation]`. |
 
 ## Your playing style
 

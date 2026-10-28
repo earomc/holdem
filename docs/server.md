@@ -29,8 +29,9 @@ On start-up it prints every setting it uses and the file they came from. The tab
 player of its own; people join from their *Join a network game* screen. After each game the
 table goes back to its lobby.
 
-The table plays by the `[game]` and `[server]` settings of `holdem.toml` (see
-[Configuration](configuration.md)). For a server, write a settings file at a fixed place and
+The tables are the `[[tables]]` entries of `holdem.toml`, and the port is `network.port` (see
+[Configuration](configuration.md)). Without a settings file it runs one table with the
+defaults. For a server, write a settings file at a fixed place and
 point holdem at it:
 
 ```
@@ -40,22 +41,22 @@ holdem serve --config ~/holdem.toml
 
 ## Several tables
 
-One `holdem serve` can run several tables on the one port. List them in `holdem.toml`, one
-`[[server.tables]]` entry per table. Each needs a name (different for every table) and may set
-its own `seats`, `speed`, `starting_chips`, `small_blind` and `fill_with_bots`; everything else
-comes from `[game]` and `[server]`:
+One `holdem serve` runs every table of `holdem.toml` on the one port: one `[[tables]]` entry
+per table. Each needs a name (different for every table); everything left out keeps its
+default, and `[tables.rules]` right after an entry sets that table's rules:
 
 ```toml
-[[server.tables]]
+[[tables]]
 name = "Low stakes"
+[tables.rules]
 small_blind = 5
 
-[[server.tables]]
+[[tables]]
 name = "Turbo"
 speed = "Fast"
 seats = 6
 
-[[server.tables]]
+[[tables]]
 name = "Heads-up"
 seats = 2
 ```
@@ -67,7 +68,7 @@ of its log names the table.
 
 ## Network
 
-- Players connect over **TCP** to the port (7777 by default, `server.port`).
+- Players connect over **TCP** to the port (7777 by default, `network.port`).
 - On the same network, the join screen finds the table through **UDP** on the same port. This
   is only a convenience; joining by address works without it.
 - For players on the internet, open the TCP port in the firewall

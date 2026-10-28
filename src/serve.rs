@@ -195,30 +195,19 @@ pub(crate) fn run_server(
     seed: Option<u64>,
 ) -> Result<(), String> {
     let mut overrides = Vec::new();
-    let speeds: Vec<String> = if config.server.tables.is_empty() {
-        vec![config.server.speed.clone()]
-    } else {
-        let default = &config.server.speed;
-        config
-            .server
-            .tables
-            .iter()
-            .map(|t| t.speed.clone().unwrap_or_else(|| default.clone()))
-            .collect()
-    };
     let mut tables: Vec<ServedTable> = config
         .server_tables()
         .into_iter()
-        .zip(speeds)
-        .map(|(settings, speed)| ServedTable {
+        .zip(&config.tables)
+        .map(|(settings, table)| ServedTable {
             settings,
-            speed: config.speed(&speed).name.clone(),
+            speed: config.speed(&table.speed).name.clone(),
         })
         .collect();
     if let Some(name) = &options.name {
-        if !config.server.tables.is_empty() {
+        if tables.len() > 1 {
             return Err(
-                "--name names the one table; with [[server.tables]] the names are in the settings file"
+                "--name names the one table; with several [[tables]] the names are in the settings file"
                     .to_string(),
             );
         }
@@ -227,14 +216,14 @@ pub(crate) fn run_server(
     }
     if let Some(wanted) = &options.speed {
         let Some(i) = config.speed_index(wanted) else {
-            let names: Vec<&str> = config.game.speeds.iter().map(|s| s.name.as_str()).collect();
+            let names: Vec<&str> = config.speeds.iter().map(|s| s.name.as_str()).collect();
             return Err(format!(
                 "unknown speed \"{}\"; the speeds are: {}",
                 wanted,
                 names.join(", ")
             ));
         };
-        let speed = &config.game.speeds[i];
+        let speed = &config.speeds[i];
         for t in &mut tables {
             t.settings.speed_ms = speed.ms;
             t.speed = speed.name.clone();
@@ -246,7 +235,7 @@ pub(crate) fn run_server(
             overrides.push(format!("--port {p}"));
             p
         }
-        None => config.server.port,
+        None => config.network.port,
     };
     if let Some(s) = seed {
         overrides.push(format!("--seed {s}"));
@@ -317,9 +306,9 @@ mod tests {
     #[test]
     fn the_server_report_shows_every_setting_and_its_source() {
         let mut c = Config::default();
-        c.game.rules.antes = true;
-        c.game.rules.rebuy_levels = 2;
-        c.game.fluctuation.enabled = true;
+        c.tables[0].rules.antes = true;
+        c.tables[0].rules.rebuy_levels = 2;
+        c.tables[0].fluctuation.enabled = true;
         let s = [ServedTable {
             settings: c.server_tables().remove(0),
             speed: "Normal".to_string(),

@@ -81,7 +81,7 @@ fn w_saves_the_settings_and_a_second_w_has_nothing_to_do() {
             .is_some_and(|t| t.starts_with("Saved 1 setting to"))
     );
     let saved = Config::read(&path).unwrap();
-    assert_eq!(saved.game.seats, Config::default().game.seats - 1);
+    assert_eq!(saved.tables[0].seats, Config::default().tables[0].seats - 1);
     assert_eq!(saved.client.name, "", "the login name is not written down");
 
     press(&mut app, KeyCode::Char('w'));
@@ -95,7 +95,7 @@ fn w_saves_the_settings_and_a_second_w_has_nothing_to_do() {
 #[test]
 fn speeds_come_from_the_config() {
     let mut config = Config::default();
-    config.game.speeds.push(holdem::config::SpeedConfig {
+    config.speeds.push(holdem::config::SpeedConfig {
         name: "Ludicrous".to_string(),
         ms: 40,
     });
@@ -112,7 +112,7 @@ fn speeds_come_from_the_config() {
 #[test]
 fn a_decision_is_answered_only_once() {
     let mut config = Config::default();
-    config.game.seats = 2;
+    config.tables[0].seats = 2;
     let mut app = App::new(config, Some(5), Sound::new(true));
     app.setup.seats = 2;
     app.start_game();
@@ -167,7 +167,7 @@ fn the_join_screen_starts_on_the_name() {
 #[test]
 fn the_hint_cannot_be_turned_on_where_it_is_not_allowed() {
     let mut config = Config::default();
-    config.game.allow_win_chance = false;
+    config.tables[0].allow_win_chance = false;
     let mut app = App::new(config, Some(1), Sound::new(true));
     app.setup.allow_win_chance = false;
     app.start_game();
@@ -236,4 +236,56 @@ fn a_server_with_several_tables_asks_which_one() {
     press(&mut app, KeyCode::Enter);
     wait(&mut app, Screen::Lobby);
     assert_eq!(app.session.as_ref().unwrap().table, "High");
+}
+
+#[test]
+fn tables_are_presets_and_w_saves_into_the_chosen_one() {
+    let dir = std::env::temp_dir().join(format!("holdem-presets-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("holdem.toml");
+    std::fs::write(
+        &path,
+        r#"[[tables]]
+name = "Low"
+[tables.rules]
+small_blind = 5
+
+[[tables]]
+name = "Turbo"
+seats = 4
+"#,
+    )
+    .unwrap();
+    let config = Config::read(&path).unwrap();
+    let mut app = App::new(config, Some(1), Sound::new(true));
+    app.config_path = Some(path.clone());
+    let press = |app: &mut App, code| app.on_key(KeyEvent::new(code, KeyModifiers::NONE));
+
+    press(&mut app, KeyCode::Enter); // Play against bots
+    assert_eq!(app.setup.rows()[app.setup.row], SetupRow::Table);
+    assert_eq!(
+        app.setup.rules.small_blind, 5,
+        "the first table to start with"
+    );
+    press(&mut app, KeyCode::Right);
+    assert_eq!(app.table().name, "Turbo");
+    assert_eq!((app.setup.seats, app.setup.rules.small_blind), (4, 10));
+
+    press(&mut app, KeyCode::Down); // Seats
+    press(&mut app, KeyCode::Left);
+    press(&mut app, KeyCode::Char('w'));
+    let saved = Config::read(&path).unwrap();
+    assert_eq!(saved.tables[1].seats, 3, "saved into Turbo");
+    assert_eq!(saved.tables[0].seats, 6, "Low is left alone");
+    assert_eq!(saved.tables[0].rules.small_blind, 5);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn with_one_table_there_is_nothing_to_choose() {
+    let mut app = App::new(Config::default(), Some(1), Sound::new(true));
+    app.on_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert!(!app.setup.rows().contains(&SetupRow::Table));
+    assert_eq!(app.setup.rows()[app.setup.row], SetupRow::Seats);
 }

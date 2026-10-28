@@ -51,12 +51,20 @@ impl App {
     }
 
     fn setup_change(&mut self, row: SetupRow, delta: i32) {
+        if row == SetupRow::Table {
+            // Another preset: start over from its settings.
+            let index = cycle(self.setup.table, self.config.tables.len(), delta);
+            let table = self.config.tables[index].clone();
+            self.setup.load(index, &table);
+            self.sound.play(Cue::Tick, 0);
+            return;
+        }
         let c = &self.config.client.setup;
         let s = &mut self.setup;
         let r = &mut s.rules;
         match row {
-            // Typed, not stepped.
-            SetupRow::Name => return,
+            // Typed, not stepped; the table is handled above.
+            SetupRow::Name | SetupRow::Table => return,
             SetupRow::Seats => {
                 s.seats =
                     (s.seats as i32 + delta).clamp(MIN_PLAYERS as i32, MAX_PLAYERS as i32) as usize
