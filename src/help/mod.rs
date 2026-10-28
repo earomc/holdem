@@ -1,6 +1,6 @@
 //! The text of the in-game help: every key, the rules, the optional table
 //! rules, playing with others, the hand rankings, and a glossary of every poker
-//! term the game uses. Rendering lives in `popups.rs`.
+//! term the game uses. Rendering lives in `ui::popups`.
 //!
 //! The pages are built when shown, so nothing in them can disagree with the
 //! code: the Keys page comes from the key table (`keys.rs`), the bot styles

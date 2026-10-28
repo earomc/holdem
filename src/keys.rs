@@ -1,4 +1,4 @@
-//! Every key binding, in one table. Input handling (`app.rs`) asks this table
+//! Every key binding, in one table. Input handling (`app`) asks this table
 //! what a key means, the key reminders on screen are built from it, and so is
 //! the Keys page of the help: a binding changed here changes everywhere.
 
