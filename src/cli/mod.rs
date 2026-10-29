@@ -1,4 +1,9 @@
-//! The command line: its options and commands, and what they ask for.
+//! The command line: its options and commands, and what they ask for. The
+//! commands other than playing live in their own files.
+
+pub(crate) mod config;
+pub(crate) mod serve;
+pub(crate) mod uninstall;
 
 use std::path::PathBuf;
 

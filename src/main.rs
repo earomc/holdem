@@ -2,14 +2,11 @@
 
 mod app;
 mod cli;
-mod config_command;
 mod help;
 mod keys;
-mod serve;
 mod session;
 mod sound;
 mod ui;
-mod uninstall_command;
 
 use std::io;
 use std::time::Duration;
@@ -20,11 +17,11 @@ use ratatui::crossterm::event::{self, Event, KeyEventKind};
 use holdem::config::Config;
 
 use app::App;
+use cli::config::{absolute, run_config, source_text};
+use cli::serve::run_server;
+use cli::uninstall::run_uninstall;
 use cli::{Action, Options, cli};
-use config_command::{absolute, run_config, source_text};
-use serve::run_server;
 use sound::Sound;
-use uninstall_command::run_uninstall;
 
 fn run(terminal: &mut DefaultTerminal, app: &mut App) -> io::Result<()> {
     loop {

@@ -16,8 +16,8 @@ use std::time::{Duration, Instant};
 use holdem::card::Rng;
 use holdem::config::{Config, SpeedConfig, TableConfig};
 use holdem::game::{Rules, State};
-use holdem::history::{self, Record};
 use holdem::net::{Connection, Found};
+use holdem::player::history::{self, Record};
 use holdem::protocol::TableView;
 
 use crate::help;

@@ -11,8 +11,8 @@ use holdem::net::{self, Server};
 use holdem::protocol::{APP_VERSION, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION};
 use holdem::table::TableSettings;
 
-use crate::cli::{BUILD, ServerOptions};
-use crate::config_command::source_text;
+use super::config::source_text;
+use super::{BUILD, ServerOptions};
 
 fn on_off(value: bool, on: &str, off: &str) -> String {
     if value { on } else { off }.to_string()

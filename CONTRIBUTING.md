@@ -96,7 +96,9 @@ terminal front end. A module that grew large is a folder whose `mod.rs` says how
 | `protocol` | the messages between table and clients |
 | `net/` | running a table on a thread (`server`), connecting and finding tables (`client`) |
 | `config/` | `holdem.toml`: the settings and defaults, `load`, `render` (with `docs`), `save` |
-| `main`, `cli`, `serve`, `config_command` | the program: the command line, `holdem serve`, `holdem config` |
+| `player/` | you beyond one game, next to `holdem.toml`: `history` (your statistics over all games, `stats.toml`) |
+| `install` | the release installer's receipts, and what `holdem uninstall` removes |
+| `main`, `cli/` | the program: `main` and the play loop; the command line in `cli`, one file per command (`serve`, `config`, `uninstall`) |
 | `app/` | screen state and input: `input`, `setup`, `table`, `settings`, `lifecycle` |
 | `session` | the client's side of a game |
 | `keys` | every key binding in one table: input, the key reminders on screen and the Keys help page all come from it |

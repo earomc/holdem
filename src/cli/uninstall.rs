@@ -3,7 +3,7 @@
 use std::io::{BufRead, IsTerminal, Write};
 use std::path::Path;
 
-use holdem::uninstall::{self, Install, Plan};
+use holdem::install::{self, Install, Plan};
 
 /// Asks a yes/no question on the terminal; anything but y or yes is no.
 fn ask(question: &str) -> bool {
@@ -19,7 +19,7 @@ fn ask(question: &str) -> bool {
 /// `holdem uninstall [--yes] [--purge]`
 pub(crate) fn run_uninstall(yes: bool, purge: bool) -> Result<(), String> {
     let exe = std::env::current_exe().map_err(|e| format!("cannot tell where holdem is: {e}"))?;
-    let Some(install) = uninstall::find(&exe, &uninstall::receipt_files()) else {
+    let Some(install) = install::find(&exe, &install::receipt_files()) else {
         return Err(format!(
             "this copy of holdem was not put there by the installer (there is no receipt for \
              it), so there is nothing to uninstall: delete {} yourself",
@@ -46,7 +46,7 @@ pub(crate) fn run_uninstall(yes: bool, purge: bool) -> Result<(), String> {
     }
     let has_data = settings
         .as_deref()
-        .is_some_and(|d| !uninstall::data_files(d).is_empty());
+        .is_some_and(|d| !install::data_files(d).is_empty());
     let purge = purge
         || (!yes
             && has_data
@@ -54,7 +54,7 @@ pub(crate) fn run_uninstall(yes: bool, purge: bool) -> Result<(), String> {
                 "Also delete your settings and statistics in {}?",
                 settings.as_deref().unwrap_or(Path::new("")).display()
             )));
-    let plan = uninstall::plan(&install, settings.as_deref(), purge);
+    let plan = install::plan(&install, settings.as_deref(), purge);
     carry_out(&install, &plan)
 }
 

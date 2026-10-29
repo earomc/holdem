@@ -1,5 +1,5 @@
-//! What `holdem uninstall` removes: finding how this copy was installed (the
-//! receipt the release installers leave), and listing what goes.
+//! How the release installer put holdem in place (the receipt it leaves), and
+//! what `holdem uninstall` removes.
 //!
 //! Nothing here deletes anything; the command carries out the [`Plan`].
 
@@ -52,7 +52,7 @@ pub struct Plan {
 }
 
 /// The files your settings and statistics are kept in.
-const DATA_FILES: [&str; 2] = [crate::config::FILE_NAME, crate::history::FILE_NAME];
+const DATA_FILES: [&str; 2] = [crate::config::FILE_NAME, crate::player::history::FILE_NAME];
 
 /// Where the installers of holdem and holdem-server leave their receipts:
 /// `$XDG_CONFIG_HOME/<app>`, else `%LOCALAPPDATA%\<app>` on Windows and

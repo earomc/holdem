@@ -305,7 +305,7 @@ fn with_one_table_there_is_nothing_to_choose() {
 fn your_statistics_are_kept_once_per_game() {
     let dir = std::env::temp_dir().join(format!("holdem-app-history-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
-    let file = dir.join(holdem::history::FILE_NAME);
+    let file = dir.join(holdem::player::history::FILE_NAME);
     let mut config = Config::default();
     config.client.name = "Mo".to_string();
     config.speeds.push(holdem::config::SpeedConfig {
@@ -343,7 +343,7 @@ fn your_statistics_are_kept_once_per_game() {
         app.save_game_stats();
         app.save_game_stats(); // a second time changes nothing
         app.return_to_menu(); // ... and neither does leaving afterwards
-        let kept = holdem::history::load(&file, "mo");
+        let kept = holdem::player::history::load(&file, "mo");
         assert_eq!(kept.games, game);
         assert_eq!(app.saved_stats(), kept, "the cache is read again");
     }

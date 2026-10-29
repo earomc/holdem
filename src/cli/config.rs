@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use holdem::config::{self, Config};
 
-use crate::cli::ConfigAction;
+use super::ConfigAction;
 
 /// Where the settings came from, for people to read.
 pub(crate) fn source_text(source: Option<&Path>) -> String {
