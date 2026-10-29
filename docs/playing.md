@@ -111,7 +111,9 @@ The game counts four standard statistics:
 - how often you bet or raise rather than call;
 - how often your post-flop bets come without even a pair.
 
-It then names the closest of the eight bot styles. Only hands you start with at least 15 big
+It then names the closest of the eight bot styles. The percentages share the match out among
+the styles (they add up to 100%), since a player is usually a mix; a number with nothing to go
+by yet, like aggression before your first bet or call, is left out. Only hands you start with at least 15 big
 blinds count, because with a short stack everyone has to play push-or-fold. A rough guess
 appears after 5 such hands, and the estimate counts as reliable after 15
 (`client.style_min_hands`). In the final standings, people show the style they are closest to

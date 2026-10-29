@@ -219,26 +219,50 @@ fn style_lines(app: &App, width: usize) -> Vec<Line<'static>> {
         }
         Some(p) => {
             let x = p.features;
-            let row = |label: &str, value: f32, about: &str| {
+            let row = |label: &str, value: f32, known: bool, about: &str| {
+                let (shown, percent) = if known {
+                    (
+                        Span::styled(bar(value, 16), cyan()),
+                        format!(" {:>3.0}%  ", value * 100.0),
+                    )
+                } else {
+                    (
+                        Span::styled(format!("{:<16}", "not seen yet"), dim()),
+                        "       ".to_string(),
+                    )
+                };
                 Line::from(vec![
                     Span::raw(format!(" {label:<12}")),
-                    Span::styled(bar(value, 16), cyan()),
-                    Span::raw(format!(" {:>3.0}%  ", value * 100.0)),
+                    shown,
+                    Span::raw(percent),
                     Span::styled(about.to_string(), dim()),
                 ])
             };
+            let k = p.known;
             lines.push(row(
                 "Hands played",
                 x.vpip,
+                k[0],
                 "share of hands you put chips in",
             ));
             lines.push(row(
                 "Raised first",
                 x.pfr,
+                k[1],
                 "share of hands you raised pre-flop",
             ));
-            lines.push(row("Aggression", x.aggression, "bets and raises vs calls"));
-            lines.push(row("Bluffing", x.bluff, "post-flop bets without a pair"));
+            lines.push(row(
+                "Aggression",
+                x.aggression,
+                k[2],
+                "bets and raises vs calls",
+            ));
+            lines.push(row(
+                "Bluffing",
+                x.bluff,
+                k[3],
+                "post-flop bets without a pair",
+            ));
             lines.push(Line::from(""));
             lines.push(Line::from(vec![
                 Span::raw(" In words: "),

@@ -22,6 +22,10 @@ All notable changes to holdem. The format follows
   deletes them, `--yes` does not ask). The README also lists the steps by hand.
 
 ### Fixed
+- The style estimate no longer shows 0% match for every style after a few hands. The
+  percentages now share the match out among the styles (adding up to 100%), and a number with
+  nothing to go by yet, like aggression before your first bet or call, is left out instead of
+  counting as never.
 - At someone else's table the settings window shows the table's own speed, and changing it
   says that the table sets the speed. Before, the speed seemed to change but did nothing.
 - The Windows install commands in the README download the installer first and then run it:

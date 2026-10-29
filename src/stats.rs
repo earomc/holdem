@@ -65,6 +65,18 @@ impl Stats {
         self.bluffs += other.bluffs;
     }
 
+    /// Which of the four features have anything to go by yet, in the order of
+    /// [`Features`]: without bets or calls there is no aggression to measure,
+    /// and without bets after the flop no bluffing.
+    pub fn known(&self) -> [bool; 4] {
+        [
+            self.hands > 0,
+            self.hands > 0,
+            self.bets + self.calls > 0,
+            self.postflop_bets > 0,
+        ]
+    }
+
     pub fn features(&self) -> Features {
         let ratio = |a: u32, b: u32| if b == 0 { 0.0 } else { a as f32 / b as f32 };
         Features {
@@ -89,21 +101,41 @@ const fn f(vpip: f32, pfr: f32, aggression: f32, bluff: f32) -> Features {
 /// plays and how often they raise say the most; bluffing is rare and noisy.
 const WEIGHTS: Features = f(1.6, 1.2, 1.0, 0.6);
 
-fn distance(a: &Features, b: &Features) -> f32 {
+/// Every feature known.
+const ALL_KNOWN: [bool; 4] = [true; 4];
+
+/// How far apart `a` and `b` are, over the features `known` (the others do not count).
+fn distance(a: &Features, b: &Features, known: [bool; 4]) -> f32 {
     let d = |x: f32, y: f32, w: f32| (w * (x - y)).powi(2);
-    (d(a.vpip, b.vpip, WEIGHTS.vpip)
-        + d(a.pfr, b.pfr, WEIGHTS.pfr)
-        + d(a.aggression, b.aggression, WEIGHTS.aggression)
-        + d(a.bluff, b.bluff, WEIGHTS.bluff))
-    .sqrt()
+    let parts = [
+        d(a.vpip, b.vpip, WEIGHTS.vpip),
+        d(a.pfr, b.pfr, WEIGHTS.pfr),
+        d(a.aggression, b.aggression, WEIGHTS.aggression),
+        d(a.bluff, b.bluff, WEIGHTS.bluff),
+    ];
+    parts
+        .iter()
+        .zip(known)
+        .filter(|(_, k)| *k)
+        .map(|(p, _)| p)
+        .sum::<f32>()
+        .sqrt()
 }
+
+/// How quickly the match falls off with distance. Neighboring styles are
+/// about 0.1 to 0.15 apart, so a player between two of them shares the match.
+const SPREAD: f32 = 0.12;
 
 /// An estimate of a player's style.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Profile {
     pub features: Features,
-    /// Closest archetype first, with a match score from 0 to 100.
+    /// Closest archetype first, each with its share of the match in percent:
+    /// how much the play resembles it compared with the others (they add up
+    /// to about 100). A player is usually a mix of styles.
     pub ranking: Vec<(&'static str, u32)>,
+    /// Which features have anything to go by yet (see [`Stats::known`]).
+    pub known: [bool; 4],
     /// "Tight" / "Loose" etc. in plain words.
     pub summary: String,
     /// Based on fewer hands than make a reliable estimate.
@@ -112,27 +144,31 @@ pub struct Profile {
 
 /// The archetype whose measured statistics are nearest to `features`.
 pub fn closest(features: &Features) -> &'static str {
-    rank(features)[0].0
+    rank(features, ALL_KNOWN)[0].0
 }
 
-fn rank(features: &Features) -> Vec<(&'static str, u32)> {
+/// Every archetype, closest first, with its share of the match.
+fn rank(features: &Features, known: [bool; 4]) -> Vec<(&'static str, u32)> {
     let mut v: Vec<(&'static str, f32)> = ARCHETYPES
         .iter()
-        .map(|a| (a.personality.style, distance(features, &a.measured)))
+        .map(|a| (a.personality.style, distance(features, &a.measured, known)))
         .collect();
     v.sort_by(|a, b| a.1.total_cmp(&b.1));
-    // A distance of 0 is a perfect match; 0.6 is about as far apart as two styles get.
-    v.into_iter()
-        .map(|(name, d)| {
-            (
-                name,
-                ((1.0 - d / 0.6).clamp(0.0, 1.0) * 100.0).round() as u32,
-            )
-        })
+    // Weights fall off with distance; measured from the closest style, so that
+    // even a sample far from every style shares the match instead of all 0.
+    let nearest = v.first().map_or(0.0, |x| x.1);
+    let weights: Vec<f32> = v
+        .iter()
+        .map(|(_, d)| (-(d * d - nearest * nearest) / (SPREAD * SPREAD)).exp())
+        .collect();
+    let total: f32 = weights.iter().sum();
+    v.iter()
+        .zip(&weights)
+        .map(|((name, _), w)| (*name, (100.0 * w / total).round() as u32))
         .collect()
 }
 
-fn describe(x: &Features) -> String {
+fn describe(x: &Features, known: [bool; 4]) -> String {
     let hands = match x.vpip {
         v if v < 0.15 => "very tight",
         v if v < 0.28 => "tight",
@@ -150,7 +186,14 @@ fn describe(x: &Features) -> String {
         b if b < 0.30 => "bluffs sometimes",
         _ => "bluffs often",
     };
-    format!("{hands}, {style}, {bluff}")
+    let mut words = vec![hands];
+    if known[2] {
+        words.push(style);
+    }
+    if known[3] {
+        words.push(bluff);
+    }
+    words.join(", ")
 }
 
 /// `None` until the player has played [`ROUGH_HANDS`] counted hands (or
@@ -162,10 +205,12 @@ pub fn profile(stats: &Stats, min_hands: u32) -> Option<Profile> {
         return None;
     }
     let features = stats.features();
+    let known = stats.known();
     Some(Profile {
         features,
-        ranking: rank(&features),
-        summary: describe(&features),
+        ranking: rank(&features, known),
+        known,
+        summary: describe(&features, known),
         rough: stats.hands < min_hands,
     })
 }
@@ -178,8 +223,42 @@ mod tests {
     fn every_centroid_is_its_own_closest_match() {
         for a in &ARCHETYPES {
             assert_eq!(closest(&a.measured), a.personality.style);
-            assert_eq!(rank(&a.measured)[0].1, 100);
+            let r = rank(&a.measured, ALL_KNOWN);
+            assert_eq!(r[0].0, a.personality.style);
+            assert!(r[0].1 > r[1].1, "{r:?}");
+            let total: u32 = r.iter().map(|x| x.1).sum();
+            assert!((98..=102).contains(&total), "shares add up to {total}");
         }
+    }
+
+    #[test]
+    fn what_is_not_seen_yet_does_not_count() {
+        // Five hands of only folding and checking: no bets or calls at all.
+        let s = Stats {
+            hands: 5,
+            ..Stats::default()
+        };
+        let p = profile(&s, MIN_HANDS).unwrap();
+        assert_eq!(p.known, [true, true, false, false]);
+        assert_eq!(
+            p.summary, "very tight",
+            "no word for aggression or bluffing yet"
+        );
+        assert!(p.ranking[0].1 > 0);
+        assert_eq!(p.ranking[0].0, "Nit");
+        // Never 0 for everyone: even a sample far from every style shares the match.
+        let wild = Stats {
+            hands: 5,
+            vpip: 5,
+            pfr: 5,
+            bets: 9,
+            calls: 0,
+            postflop_bets: 4,
+            bluffs: 4,
+            ..Stats::default()
+        };
+        let p = profile(&wild, MIN_HANDS).unwrap();
+        assert!(p.ranking[0].1 >= 20, "{:?}", p.ranking);
     }
 
     #[test]

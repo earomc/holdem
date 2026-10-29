@@ -91,7 +91,9 @@ pub(super) fn page(facts: &Facts) -> Page {
            must play push-or-fold. It compares your numbers with what each bot style \
            really does (measured over thousands of bot hands) and names the closest: a \
            rough guess after {} such hands, a reliable estimate after {}. Neighboring \
-           styles are similar, so look at the top two. Your counts are also added up over \
+           styles are similar, so look at the top two: the percentages share the match out \
+           among the styles, since a player is usually a mix of them. Numbers with nothing \
+           to go by yet (no bets or calls, say) are left out. Your counts are also added up over \
            all your games (in stats.toml, next to holdem.toml), and the Your style tab of \
            game info (key {log}) shows that estimate too.",
                 facts.style_min_stack_bb,
