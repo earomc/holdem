@@ -4,6 +4,7 @@ use std::sync::mpsc::Sender;
 
 use super::{Client, ClientId, Table, TableEvent};
 use crate::bot;
+use crate::player::symbol::Symbol;
 use crate::protocol::{
     APP_VERSION, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION, ServerMsg, clean_name, negotiate,
 };
@@ -24,6 +25,7 @@ impl Table {
                 log_seq: 0,
                 events: Vec::new(),
                 drop: false,
+                symbol: None,
             },
         );
     }
@@ -53,6 +55,7 @@ impl Table {
         name: &str,
         version: u32,
         min_version: Option<u32>,
+        symbol: Option<Symbol>,
     ) {
         let agreed = match negotiate(version, min_version) {
             Ok(v) => v,
@@ -111,6 +114,9 @@ impl Table {
                 name: unique,
                 people,
             });
+        }
+        if let Some(c) = self.clients.get_mut(&id) {
+            c.symbol = symbol;
         }
         if let Some(c) = self.clients.get(&id) {
             let _ = c.outbox.send(ServerMsg::Welcome {

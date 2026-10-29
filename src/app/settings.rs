@@ -34,6 +34,9 @@ impl App {
         if !self.speed().name.eq_ignore_ascii_case(&client.speed) {
             client.speed = self.speed().name.clone();
         }
+        if let Some(s) = self.symbol {
+            client.symbol = s.to_string();
+        }
         client.win_chance_hint = self.show_odds;
         client.sound.volume = self.sound.volume();
         let s = &self.setup;

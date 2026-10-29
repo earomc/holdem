@@ -37,7 +37,7 @@ pub(super) fn seat_title(v: &TableView, seat: usize) -> Line<'static> {
     }
     let mut spans = vec![
         Span::raw(" "),
-        avatar(&s.name),
+        avatar(&s.name, s.symbol),
         Span::raw(" "),
         Span::styled(s.name.clone(), bold()),
     ];

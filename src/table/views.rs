@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 use super::{ClientId, Table};
 use crate::eval;
 use crate::game::State;
+use crate::player::symbol::Symbol;
 use crate::protocol::{LobbyPlayer, LobbyView, SeatView, ServerMsg, TableView};
 
 impl Table {
@@ -70,6 +71,7 @@ impl Table {
                     name: c.name.clone(),
                     ready: c.ready,
                     you: *other == id,
+                    symbol: c.symbol,
                 })
                 .collect(),
             seats: self.settings.seats,
@@ -89,6 +91,11 @@ impl Table {
             .values()
             .filter(|c| c.joined && c.connected && c.seat.is_none() && !c.spectator)
             .map(|c| c.name.clone())
+            .collect();
+        let symbols: Vec<(usize, Symbol)> = self
+            .clients
+            .values()
+            .filter_map(|c| Some((c.seat?, c.symbol?)))
             .collect();
         let connected_seats: Vec<(usize, bool)> = self
             .clients
@@ -113,6 +120,7 @@ impl Table {
                 SeatView {
                     name: p.name.clone(),
                     is_human: p.is_human,
+                    symbol: symbols.iter().find(|(s, _)| *s == i).map(|(_, sym)| *sym),
                     connected: connected_seats
                         .iter()
                         .find(|(s, _)| *s == i)

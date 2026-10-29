@@ -394,7 +394,7 @@ fn the_choose_screen_renders_at_every_size() {
     app.screen = Screen::Join;
     app.join.name = "Ann".to_string();
     app.join.address = format!("127.0.0.1:{}", server.port.unwrap());
-    app.join.row = 1;
+    app.join.row = crate::app::JOIN_ADDRESS;
     press(&mut app, KeyCode::Enter);
     let deadline = Instant::now() + Duration::from_secs(10);
     while app.screen != Screen::Choose {

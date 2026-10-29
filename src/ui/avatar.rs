@@ -1,14 +1,11 @@
-//! A colored symbol for every player name, so players with similar names are
-//! easy to tell apart. It follows from the name alone: the same name gets the
-//! same symbol on every screen and every computer.
+//! Drawing a player's symbol (see [`holdem::player::symbol`]).
 
 use ratatui::style::{Color, Style};
 use ratatui::text::Span;
 
-/// One column wide everywhere, and none of them a card suit or an emoji.
-const GLYPHS: [&str; 12] = ["●", "▲", "◆", "■", "★", "♪", "✚", "◉", "✿", "☾", "⚑", "▼"];
+use holdem::player::symbol::Symbol;
 
-/// Colors that stand out from each other and from the gray of the seat borders.
+/// The terminal colours, in the order of [`holdem::player::symbol::COLORS`].
 const COLORS: [Color; 8] = [
     Color::Red,
     Color::Green,
@@ -20,43 +17,26 @@ const COLORS: [Color; 8] = [
     Color::LightBlue,
 ];
 
-/// FNV-1a: small and fixed for good (the standard hasher may change between
-/// Rust versions, and with it everyone's symbol).
-fn hash(text: &str) -> u32 {
-    text.bytes().fold(0x811c_9dc5, |h, b| {
-        (h ^ u32::from(b)).wrapping_mul(0x0100_0193)
-    })
-}
-
-/// The symbol of `name`. Case and surrounding spaces do not count.
-pub(super) fn avatar(name: &str) -> Span<'static> {
-    let h = hash(&name.trim().to_lowercase());
-    let glyph = GLYPHS[h as usize % GLYPHS.len()];
-    let color = COLORS[(h as usize / GLYPHS.len()) % COLORS.len()];
-    Span::styled(glyph, Style::new().fg(color))
+/// The symbol of a player: the one they chose, or else the one their name gives.
+pub(super) fn avatar(name: &str, chosen: Option<Symbol>) -> Span<'static> {
+    let s = chosen.unwrap_or_else(|| Symbol::for_name(name));
+    let color = COLORS[usize::from(s.color) % COLORS.len()];
+    Span::styled(s.glyph_text(), Style::new().fg(color))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use unicode_width::UnicodeWidthStr;
+    use holdem::player::symbol::COLORS as NAMES;
 
     #[test]
-    fn a_name_always_gets_the_same_symbol() {
-        assert_eq!(avatar("Mo"), avatar(" mo "));
-        assert_eq!(avatar("Ava"), avatar("AVA"));
-        let names = [
-            "Ava", "Ben", "Chloe", "Dmitri", "Elena", "Frank", "Gina", "Hiro",
-        ];
-        let mut symbols: Vec<_> = names.iter().map(|n| avatar(n)).collect();
-        symbols.dedup();
-        assert!(symbols.len() > 1, "every name got the same symbol");
-    }
-
-    #[test]
-    fn every_symbol_is_one_column_wide() {
-        for g in GLYPHS {
-            assert_eq!(g.width(), 1, "{g}");
-        }
+    fn a_chosen_symbol_wins_over_the_name() {
+        let chosen = Symbol {
+            glyph: 12,
+            color: 2,
+        };
+        assert_eq!(avatar("Mo", Some(chosen)).content, "♛");
+        assert_eq!(avatar("Mo", None), avatar("mo", None));
+        assert_eq!(COLORS.len(), NAMES.len());
     }
 }

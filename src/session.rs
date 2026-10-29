@@ -3,6 +3,7 @@
 
 use holdem::game::HandResult;
 use holdem::net::{Connection, Server};
+use holdem::player::symbol::Symbol;
 use holdem::protocol::{Announcement, ClientMsg, LobbyView, ServerMsg, TableView};
 use holdem::stats::Stats;
 
@@ -63,9 +64,10 @@ impl Session {
         server: Option<Server>,
         name: &str,
         table: Option<&str>,
+        symbol: Option<Symbol>,
         log_keep: usize,
     ) -> Session {
-        conn.send(ClientMsg::hello(name, table));
+        conn.send(ClientMsg::hello(name, table, symbol));
         let share =
             server
                 .as_ref()

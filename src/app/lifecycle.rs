@@ -65,6 +65,7 @@ impl App {
             Some(server),
             &player,
             None,
+            self.symbol,
             self.config.client.log_lines,
         );
         if !host {
@@ -265,6 +266,7 @@ impl App {
                     None,
                     &name,
                     table.as_deref(),
+                    self.symbol,
                     self.config.client.log_lines,
                 ));
                 self.screen = Screen::Lobby;
@@ -283,7 +285,7 @@ impl App {
         {
             self.join.found = found;
             self.discovery = None;
-            let rows = 2 + self.join.found.len();
+            let rows = super::JOIN_FOUND + self.join.found.len();
             if self.join.row >= rows {
                 self.join.row = rows - 1;
             }

@@ -82,7 +82,7 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
                 let style = if p.ready { green() } else { Style::new() };
                 lines.push(Line::from(vec![
                     Span::raw("   "),
-                    avatar(&p.name),
+                    avatar(&p.name, p.symbol),
                     Span::raw(format!(" {:<18}", p.name)),
                     Span::styled(mark, style),
                     Span::styled(you, dim()),

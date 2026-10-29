@@ -40,7 +40,8 @@ fn the_name_is_typed_on_the_setup_screen() {
     );
     assert_eq!(app.join.name, "Mo", "the configured name");
 
-    press(&mut app, KeyCode::Up);
+    press(&mut app, KeyCode::Up); // your symbol
+    press(&mut app, KeyCode::Up); // your name
     for c in "Qh?".chars() {
         press(&mut app, KeyCode::Char(c));
     }
@@ -205,7 +206,7 @@ fn a_server_with_several_tables_asks_which_one() {
     app.screen = Screen::Join;
     app.join.name = "Ann".to_string();
     app.join.address = format!("127.0.0.1:{}", server.port.unwrap());
-    app.join.row = 1;
+    app.join.row = super::JOIN_ADDRESS;
     press(&mut app, KeyCode::Enter);
 
     let wait = |app: &mut App, screen: Screen| {
@@ -348,4 +349,38 @@ fn your_statistics_are_kept_once_per_game() {
         assert_eq!(app.saved_stats(), kept, "the cache is read again");
     }
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn you_choose_your_symbol_on_the_setup_and_join_screens() {
+    let mut config = Config::default();
+    config.client.name = "Mo".to_string();
+    let mut app = App::new(config, Some(1), Sound::new(true));
+    let press = |app: &mut App, code| app.on_key(KeyEvent::new(code, KeyModifiers::NONE));
+    let named = holdem::player::symbol::Symbol::for_name("Mo");
+    assert_eq!(app.symbol, None);
+    assert_eq!(app.shown_symbol(), named, "until you choose, your name's");
+    press(&mut app, KeyCode::Enter); // Play against bots
+    app.setup.row = 1;
+    assert_eq!(app.setup.rows()[1], SetupRow::Symbol);
+    press(&mut app, KeyCode::Right);
+    let moved = app.symbol.expect("chosen now");
+    assert_ne!(moved.glyph, named.glyph);
+    assert_eq!(moved.color, named.color);
+    press(&mut app, KeyCode::Char('c'));
+    assert_ne!(app.shown_symbol().color, named.color);
+    // Only the shapes open to everyone, all the way round.
+    for _ in 0..30 {
+        press(&mut app, KeyCode::Left);
+        assert!(app.shown_symbol().is_base());
+    }
+    let chosen = app.shown_symbol();
+    assert_eq!(app.settings_as_config().client.symbol, chosen.to_string());
+
+    press(&mut app, KeyCode::Esc);
+    app.screen = Screen::Join;
+    app.join.row = super::JOIN_SYMBOL;
+    press(&mut app, KeyCode::Char('c'));
+    assert_ne!(app.shown_symbol().color, chosen.color);
+    assert_eq!(app.join.name, "Mo", "C changes the colour, it is not typed");
 }

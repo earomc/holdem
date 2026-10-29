@@ -11,6 +11,13 @@ pub(super) const DOCS: &[(&str, &str)] = &[
         "Your name at the table. Empty means your computer's login name.",
     ),
     (
+        "client.symbol",
+        "Your symbol before your name: a shape and a colour, like \"★ cyan\". Empty means\n\
+         the one your name gives. Shapes: ● ▲ ◆ ■ ★ ♪ ✚ ◉ ✿ ☾ ⚑ ▼, and more that\n\
+         achievements unlock. Colours: red, green, yellow, blue, magenta, cyan,\n\
+         light red, light blue.",
+    ),
+    (
         "client.speed",
         "The game speed to start with: one of the names in [[speeds]].",
     ),

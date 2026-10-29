@@ -26,6 +26,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::card::Card;
 use crate::game::{Action, GameEvent, HandResult, Legal, Rules, Standing, State, Street};
+use crate::player::symbol::Symbol;
 use crate::stats::Stats;
 
 /// The newest protocol version this program speaks. Version 4 added several
@@ -57,6 +58,9 @@ pub enum ClientMsg {
         /// The table to join, by name, at a server with several (protocol 4).
         #[serde(default)]
         table: Option<String>,
+        /// The symbol the player chose; `None` takes the one their name gives.
+        #[serde(default)]
+        symbol: Option<Symbol>,
     },
     /// The table to join, chosen from [`ServerMsg::Tables`] (protocol 4).
     ChooseTable(String),
@@ -77,13 +81,14 @@ pub enum ClientMsg {
 impl ClientMsg {
     /// The `Hello` this program sends, for the table called `table` if the
     /// server has several.
-    pub fn hello(name: &str, table: Option<&str>) -> ClientMsg {
+    pub fn hello(name: &str, table: Option<&str>, symbol: Option<Symbol>) -> ClientMsg {
         ClientMsg::Hello {
             name: name.to_string(),
             version: PROTOCOL_VERSION,
             min_version: Some(MIN_PROTOCOL_VERSION),
             app: APP_VERSION.to_string(),
             table: table.map(str::to_string),
+            symbol,
         }
     }
 }
@@ -190,6 +195,9 @@ pub struct LobbyPlayer {
     pub name: String,
     pub ready: bool,
     pub you: bool,
+    /// The symbol they chose (`None`: the one their name gives).
+    #[serde(default)]
+    pub symbol: Option<Symbol>,
 }
 
 /// The waiting room before a game.
@@ -235,6 +243,8 @@ pub struct SeatView {
     pub payout: u32,
     pub rebuy_pending: bool,
     pub rebuys: u32,
+    /// The symbol a person chose (`None`: the one their name gives).
+    pub symbol: Option<Symbol>,
 }
 
 /// The whole table as one client sees it.
@@ -363,6 +373,7 @@ mod tests {
                 min_version: Some(MIN_PROTOCOL_VERSION),
                 app: APP_VERSION.into(),
                 table: None,
+                symbol: Some(Symbol { glyph: 3, color: 1 }),
             },
             ClientMsg::Act {
                 action: Action::RaiseTo(120),
@@ -467,5 +478,16 @@ mod tests {
             clean_name("abcdefghijklmnopqrstuvwxyz").chars().count(),
             MAX_NAME
         );
+    }
+
+    #[test]
+    fn a_hello_without_a_symbol_still_reads() {
+        // What holdem 0.9 and older send.
+        let line =
+            r#"{"Hello":{"name":"Ann","version":4,"min_version":3,"app":"0.9.0","table":null}}"#;
+        let msg: ClientMsg = serde_json::from_str(line).unwrap();
+        assert!(matches!(msg, ClientMsg::Hello { symbol: None, .. }));
+        let seat: SeatView = serde_json::from_str(r#"{"name":"Ann"}"#).unwrap();
+        assert_eq!(seat.symbol, None);
     }
 }

@@ -18,6 +18,7 @@ use holdem::config::{Config, SpeedConfig, TableConfig};
 use holdem::game::{Rules, State};
 use holdem::net::{Connection, Found};
 use holdem::player::history::{self, Record};
+use holdem::player::symbol::{self, Symbol};
 use holdem::protocol::TableView;
 
 use crate::help;
@@ -114,6 +115,8 @@ impl InfoTab {
 pub enum SetupRow {
     /// Your name at the table, typed in place (the same one the join screen uses).
     Name,
+    /// Your symbol: ←→ its shape, C its colour.
+    Symbol,
     /// Which of the `[[tables]]` to start from (shown when there are several).
     Table,
     Seats,
@@ -131,8 +134,9 @@ pub enum SetupRow {
     WinChance,
 }
 
-pub const SETUP_ROWS: [SetupRow; 15] = [
+pub const SETUP_ROWS: [SetupRow; 16] = [
     SetupRow::Name,
+    SetupRow::Symbol,
     SetupRow::Table,
     SetupRow::Seats,
     SetupRow::FillWithBots,
@@ -189,12 +193,18 @@ impl Setup {
     }
 }
 
+/// The rows of the join screen: these, then the tables found.
+pub const JOIN_NAME: usize = 0;
+pub const JOIN_SYMBOL: usize = 1;
+pub const JOIN_ADDRESS: usize = 2;
+pub const JOIN_FOUND: usize = 3;
+
 /// The join screen: your name, an address, and tables found on the network.
 #[derive(Clone, Debug, Default)]
 pub struct Join {
     pub name: String,
     pub address: String,
-    /// 0 = name, 1 = address, 2.. = found tables.
+    /// One of `JOIN_NAME` etc., or `JOIN_FOUND` + the index of a found table.
     pub row: usize,
     pub found: Vec<Found>,
     pub status: String,
@@ -241,6 +251,8 @@ pub struct App {
     pub speed: usize,
     /// Your wish to see the win-chance hint (shown only where the table allows it).
     pub show_odds: bool,
+    /// The symbol you chose (`None`: the one your name gives).
+    pub symbol: Option<Symbol>,
     pub sound: Sound,
     pub raise: Option<RaisePrompt>,
 
@@ -376,6 +388,7 @@ impl App {
             screen: Screen::Menu,
             speed: config.speed_index(&config.client.speed).unwrap_or(0),
             show_odds: config.client.win_chance_hint,
+            symbol: Symbol::parse(&config.client.symbol),
             config,
             config_note: String::new(),
             config_path: None,
@@ -498,6 +511,33 @@ impl App {
     /// True while a window that pauses a solo game is open.
     pub fn overlay_open(&self) -> bool {
         self.show_help || self.info.is_some() || self.show_settings || self.leave.is_some()
+    }
+
+    /// Your symbol as others will see it: the chosen one, or your name's.
+    pub fn shown_symbol(&self) -> Symbol {
+        self.symbol
+            .unwrap_or_else(|| Symbol::for_name(&self.join.name))
+    }
+
+    /// The shapes you may choose from (indices into [`symbol::GLYPHS`]).
+    pub fn available_glyphs(&self) -> Vec<u8> {
+        (0..symbol::BASE_GLYPHS as u8).collect()
+    }
+
+    /// Steps your symbol's shape through the ones you may use.
+    pub(super) fn step_symbol_shape(&mut self, delta: i32) {
+        let mut s = self.shown_symbol();
+        let shapes = self.available_glyphs();
+        let i = shapes.iter().position(|g| *g == s.glyph).unwrap_or(0);
+        s.glyph = shapes[cycle(i, shapes.len(), delta)];
+        self.symbol = Some(s);
+    }
+
+    /// Your symbol's next colour.
+    pub(super) fn next_symbol_color(&mut self) {
+        let mut s = self.shown_symbol();
+        s.color = ((usize::from(s.color) + 1) % symbol::COLORS.len()) as u8;
+        self.symbol = Some(s);
     }
 
     /// The name your statistics are kept under: the one you chose, not the

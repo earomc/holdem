@@ -5,7 +5,10 @@ use ratatui::crossterm::event::KeyCode;
 use holdem::game::{MAX_PLAYERS, MIN_PLAYERS};
 use holdem::protocol::MAX_NAME;
 
-use super::{App, MAX_ADDRESS, Screen, SetupRow, cycle, step_choice};
+use super::{
+    App, JOIN_ADDRESS, JOIN_FOUND, JOIN_NAME, JOIN_SYMBOL, MAX_ADDRESS, Screen, SetupRow, cycle,
+    step_choice,
+};
 use crate::keys::{self, Cmd, Place};
 use crate::sound::Cue;
 
@@ -38,6 +41,10 @@ impl App {
             Some(Cmd::Erase) if row == SetupRow::Name => {
                 self.join.name.pop();
             }
+            Some(Cmd::Color) if row == SetupRow::Symbol => {
+                self.next_symbol_color();
+                self.sound.play(Cue::Tick, 0);
+            }
             Some(Cmd::Select) if self.join.name.trim().is_empty() => {
                 self.notify("Type your name first.".to_string());
                 self.setup.row = 0;
@@ -65,6 +72,11 @@ impl App {
         match row {
             // Typed, not stepped; the table is handled above.
             SetupRow::Name | SetupRow::Table => return,
+            SetupRow::Symbol => {
+                self.step_symbol_shape(delta);
+                self.sound.play(Cue::Tick, 0);
+                return;
+            }
             SetupRow::Seats => {
                 s.seats =
                     (s.seats as i32 + delta).clamp(MIN_PLAYERS as i32, MAX_PLAYERS as i32) as usize
@@ -100,17 +112,26 @@ impl App {
             }
             return;
         }
-        let rows = 2 + self.join.found.len();
+        // On your symbol's row, ← → and C change it (elsewhere letters are typed).
+        if self.join.row == JOIN_SYMBOL {
+            match code {
+                KeyCode::Left => return self.step_symbol_shape(-1),
+                KeyCode::Right => return self.step_symbol_shape(1),
+                KeyCode::Char('c' | 'C') => return self.next_symbol_color(),
+                _ => {}
+            }
+        }
+        let rows = JOIN_FOUND + self.join.found.len();
         match keys::command(Place::Join, code) {
             Some(Cmd::Up) => self.join.row = cycle(self.join.row, rows, -1),
             Some(Cmd::Down) => self.join.row = cycle(self.join.row, rows, 1),
             Some(Cmd::Back) => self.screen = Screen::Menu,
             Some(Cmd::Select) => self.join_selected(),
             Some(Cmd::Erase) => match self.join.row {
-                0 => {
+                JOIN_NAME => {
                     self.join.name.pop();
                 }
-                1 => {
+                JOIN_ADDRESS => {
                     self.join.address.pop();
                 }
                 _ => {}
@@ -121,8 +142,10 @@ impl App {
                     && !c.is_control()
                 {
                     match self.join.row {
-                        0 if self.join.name.chars().count() < MAX_NAME => self.join.name.push(c),
-                        1 if self.join.address.chars().count() < MAX_ADDRESS => {
+                        JOIN_NAME if self.join.name.chars().count() < MAX_NAME => {
+                            self.join.name.push(c)
+                        }
+                        JOIN_ADDRESS if self.join.address.chars().count() < MAX_ADDRESS => {
                             self.join.address.push(c)
                         }
                         _ => {}
@@ -135,9 +158,9 @@ impl App {
     fn join_selected(&mut self) {
         if self.join.name.trim().is_empty() {
             self.join.status = "Type your name first.".to_string();
-            self.join.row = 0;
-        } else if self.join.row >= 2 {
-            let f = &self.join.found[self.join.row - 2];
+            self.join.row = JOIN_NAME;
+        } else if self.join.row >= JOIN_FOUND {
+            let f = &self.join.found[self.join.row - JOIN_FOUND];
             match f.info.compatibility() {
                 Ok(_) => {
                     let (address, table) = (f.address.to_string(), f.info.table.clone());
@@ -149,7 +172,7 @@ impl App {
             self.join.status = "Type the address of the table (for example 192.168.1.20 or \
                                 myhost.net:7777), or pick a table found on your network."
                 .to_string();
-            self.join.row = 1;
+            self.join.row = JOIN_ADDRESS;
         } else {
             let address = self.join.address.clone();
             self.connect_to(address, None);

@@ -159,6 +159,15 @@ impl Config {
         if c.log_lines == 0 {
             return Err("client.log_lines must be at least 1".to_string());
         }
+        if !c.symbol.trim().is_empty() && crate::player::symbol::Symbol::parse(&c.symbol).is_none()
+        {
+            return Err(format!(
+                "client.symbol \"{}\" is not a shape and a colour, like \"★ cyan\" (shapes: {}; colours: {})",
+                c.symbol,
+                crate::player::symbol::GLYPHS.join(" "),
+                crate::player::symbol::COLORS.join(", ")
+            ));
+        }
         if c.style_min_hands == 0 {
             return Err("client.style_min_hands must be at least 1".to_string());
         }

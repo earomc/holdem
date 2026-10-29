@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 use super::*;
 use crate::card::Rng;
 use crate::game::{Action, State};
+use crate::player::symbol::Symbol;
 use crate::protocol::{ClientMsg, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION, ServerMsg, TableView};
 
 struct Peer {
@@ -28,7 +29,7 @@ impl Peer {
 fn join(t: &mut Table, id: ClientId, name: &str, owner: bool, now: Instant) -> Peer {
     let (tx, rx) = channel();
     t.connect(id, tx, owner);
-    t.handle(id, ClientMsg::hello(name, None), now);
+    t.handle(id, ClientMsg::hello(name, None, None), now);
     Peer { id, rx, view: None }
 }
 
@@ -379,6 +380,7 @@ fn wrong_versions_are_turned_away_with_a_reason() {
         min_version,
         app: "test".into(),
         table: None,
+        symbol: None,
     };
     // A client from before protocol 3 (holdem 0.3).
     let (tx, rx) = channel();
@@ -529,6 +531,50 @@ fn a_pause_does_not_eat_into_the_time_to_act() {
     host.read();
     let left = host.view.unwrap().turn_seconds_left.unwrap();
     assert!((24..=25).contains(&left), "{left} seconds left");
+}
+
+#[test]
+fn everyone_sees_the_symbol_a_person_chose() {
+    let now = Instant::now();
+    let mut t = Table::new(settings(), Rng::seeded(17));
+    let star = Symbol { glyph: 4, color: 5 };
+    let (tx, rx) = channel();
+    t.connect(1, tx, true);
+    t.handle(1, ClientMsg::hello("Ann", None, Some(star)), now);
+    let mut me = Peer {
+        id: 1,
+        rx,
+        view: None,
+    };
+    let mut other = join(&mut t, 2, "Bob", false, now);
+    t.flush(now);
+    let lobby = other
+        .read()
+        .into_iter()
+        .find_map(|m| match m {
+            ServerMsg::Lobby(l) => Some(l),
+            _ => None,
+        })
+        .expect("a lobby view");
+    let ann = lobby.players.iter().find(|p| p.name == "Ann").unwrap();
+    assert_eq!(ann.symbol, Some(star));
+    t.handle(1, ClientMsg::Ready, now);
+    t.handle(2, ClientMsg::Ready, now);
+    t.flush(now);
+    me.read();
+    other.read();
+    let v = other.view.clone().expect("the game started");
+    let ann = v.seats.iter().find(|s| s.name == "Ann").unwrap();
+    assert_eq!(ann.symbol, Some(star));
+    let bob = v.seats.iter().find(|s| s.name == "Bob").unwrap();
+    assert_eq!(bob.symbol, None, "no choice: the name's symbol");
+    assert!(
+        v.seats
+            .iter()
+            .filter(|s| !s.is_human)
+            .all(|s| s.symbol.is_none()),
+        "bots have none"
+    );
 }
 
 #[test]

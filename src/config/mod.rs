@@ -66,6 +66,8 @@ pub struct Config {
 pub struct ClientConfig {
     /// Your name at the table; empty means your computer's login name.
     pub name: String,
+    /// Your symbol, "★ cyan"; empty means the one your name gives.
+    pub symbol: String,
     /// Name of the speed to start with (one of `[[speeds]]`).
     pub speed: String,
     /// Show the win-chance hint where the table allows it.
@@ -227,6 +229,7 @@ impl Default for ClientConfig {
     fn default() -> ClientConfig {
         ClientConfig {
             name: String::new(),
+            symbol: String::new(),
             speed: DEFAULT_SPEED.to_string(),
             win_chance_hint: true,
             hint_samples: 1500,

@@ -20,6 +20,7 @@ use std::time::Instant;
 use crate::card::Rng;
 use crate::config::Config;
 use crate::game::{Game, GameEvent, MAX_PLAYERS, MIN_PLAYERS, Rules};
+use crate::player::symbol::Symbol;
 use crate::protocol::{Announcement, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION, ServerMsg};
 
 mod connections;
@@ -93,6 +94,8 @@ struct Client {
     events: Vec<GameEvent>,
     /// Remove this client at the next flush (after a goodbye).
     drop: bool,
+    /// The symbol the person chose (`None`: the one their name gives).
+    symbol: Option<Symbol>,
 }
 
 pub struct Table {

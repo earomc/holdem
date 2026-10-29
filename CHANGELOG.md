@@ -7,6 +7,9 @@ All notable changes to holdem. The format follows
 ## [Unreleased]
 
 ### Added
+- Choose your own symbol: a *Your symbol* row on the setup and join screens (`←` `→` the
+  shape, `C` the colour). Everyone at the table sees it, and `W` saves it as `client.symbol`.
+  Without a choice you keep the one your name gives.
 - `holdem uninstall` removes a copy the release installer put in place: the program, the
   installer's receipt, and `~/.cargo/bin` from your PATH if nothing else is in it. It asks
   first, and keeps your settings and statistics unless you choose otherwise (`--purge`

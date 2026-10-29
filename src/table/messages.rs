@@ -12,10 +12,11 @@ impl Table {
             name,
             version,
             min_version,
+            symbol,
             ..
         } = &msg
         {
-            self.hello(id, name, *version, *min_version);
+            self.hello(id, name, *version, *min_version, *symbol);
             return;
         }
         let Some(client) = self.clients.get(&id) else {

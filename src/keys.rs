@@ -64,6 +64,8 @@ pub enum Cmd {
     MaxRaise,
     MainMenu,
     Stay,
+    /// The next colour for your symbol.
+    Color,
 }
 
 /// One line of the Keys help page: one or more bindings and what they do.
@@ -159,6 +161,11 @@ pub const SECTIONS: &[Section] = &[
                 "edit your name (on that row, Q, ? and H are letters: F1 opens the help)",
             ),
             row(
+                &[(&[Char('c')], Cmd::Color)],
+                "on Your symbol: the next colour (← → change the shape)",
+                "",
+            ),
+            row(
                 &[(&[Enter], Cmd::Select)],
                 "deal (or open your table to others when hosting)",
                 "",
@@ -189,6 +196,11 @@ pub const SECTIONS: &[Section] = &[
                 "typing, Backspace",
                 &[(&[Backspace], Cmd::Erase)],
                 "edit your name or the address",
+            ),
+            note(
+                "← → and C",
+                &[],
+                "on Your symbol: change its shape and its colour",
             ),
             row(
                 &[(&[Enter], Cmd::Select)],

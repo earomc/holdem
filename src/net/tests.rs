@@ -11,7 +11,7 @@ use crate::protocol::{ClientMsg, ServerMsg};
 use crate::table::TableSettings;
 
 fn hello(c: &Connection, name: &str) {
-    c.send(ClientMsg::hello(name, None));
+    c.send(ClientMsg::hello(name, None, None));
 }
 
 /// Waits for a table view that satisfies `pred`.
@@ -146,7 +146,7 @@ fn unknown_messages_are_answered_not_fatal() {
         w.write_all(text.as_bytes()).unwrap();
         w.write_all(b"\n").unwrap();
     };
-    send(&serde_json::to_string(&ClientMsg::hello("Future", None)).unwrap());
+    send(&serde_json::to_string(&ClientMsg::hello("Future", None, None)).unwrap());
     r.read_line(&mut line).unwrap();
     assert!(line.contains("Welcome"), "{}", line);
     // A request from some future version of holdem.
@@ -236,7 +236,7 @@ fn next_reply(c: &Connection) -> ServerMsg {
 fn a_greeting_naming_a_table_goes_to_that_table() {
     let server = two_tables();
     let c = connect("127.0.0.1", server.port.unwrap(), Duration::from_secs(5)).unwrap();
-    c.send(ClientMsg::hello("Ann", Some("High")));
+    c.send(ClientMsg::hello("Ann", Some("High"), None));
     assert!(matches!(next_reply(&c), ServerMsg::Welcome { table, .. } if table == "High"));
 }
 
@@ -244,7 +244,7 @@ fn a_greeting_naming_a_table_goes_to_that_table() {
 fn without_a_table_the_client_chooses_from_the_list() {
     let server = two_tables();
     let c = connect("127.0.0.1", server.port.unwrap(), Duration::from_secs(5)).unwrap();
-    c.send(ClientMsg::hello("Ann", None));
+    c.send(ClientMsg::hello("Ann", None, None));
     let ServerMsg::Tables(tables) = next_reply(&c) else {
         panic!("expected the list of tables");
     };
@@ -269,6 +269,7 @@ fn older_programs_land_at_the_first_table() {
         min_version: Some(3),
         app: "0.7.0".to_string(),
         table: None,
+        symbol: None,
     });
     assert!(
         matches!(next_reply(&c), ServerMsg::Welcome { table, version: 3, .. } if table == "Low")
@@ -281,8 +282,8 @@ fn names_are_unique_per_table_not_per_server() {
     let port = server.port.unwrap();
     let a = connect("127.0.0.1", port, Duration::from_secs(5)).unwrap();
     let b = connect("127.0.0.1", port, Duration::from_secs(5)).unwrap();
-    a.send(ClientMsg::hello("Ann", Some("Low")));
-    b.send(ClientMsg::hello("Ann", Some("High")));
+    a.send(ClientMsg::hello("Ann", Some("Low"), None));
+    b.send(ClientMsg::hello("Ann", Some("High"), None));
     for c in [&a, &b] {
         assert!(matches!(next_reply(c), ServerMsg::Welcome { name, .. } if name == "Ann"));
     }

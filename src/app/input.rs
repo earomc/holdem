@@ -155,9 +155,9 @@ impl App {
             Some(Cmd::Select) => match MenuItem::ALL[self.menu_row] {
                 item @ (MenuItem::Solo | MenuItem::Host) => {
                     self.setup.host = item == MenuItem::Host;
-                    // Start below the name, which is usually right already, so
-                    // that Q still goes straight back.
-                    self.setup.row = 1;
+                    // Start below your name and symbol, which are usually right
+                    // already, so that Q still goes straight back.
+                    self.setup.row = 2;
                     self.screen = Screen::Setup;
                 }
                 MenuItem::Join => {

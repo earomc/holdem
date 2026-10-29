@@ -7,10 +7,11 @@ use ratatui::text::{Line, Span};
 
 use holdem::protocol::Announcement;
 
+use super::avatar::avatar;
 use super::style::{bold, centered, dim, key_for, reminder, yellow};
 use super::text::wrap_text;
 use super::{boxed, screen_box, title_block};
-use crate::app::App;
+use crate::app::{App, JOIN_ADDRESS, JOIN_FOUND, JOIN_NAME, JOIN_SYMBOL};
 use crate::keys::{Cmd, Place};
 
 fn input_line(label: &str, value: &str, active: bool) -> Line<'static> {
@@ -19,6 +20,21 @@ fn input_line(label: &str, value: &str, active: bool) -> Line<'static> {
     Line::from(vec![
         Span::raw(format!(" {} {:<10}", if active { "▶" } else { " " }, label)),
         Span::styled(format!("{value}{cursor}"), style),
+    ])
+}
+
+/// Your symbol, in its colour, with its colour's name.
+fn symbol_line(app: &App, active: bool) -> Line<'static> {
+    let s = app.shown_symbol();
+    let style = if active { yellow() } else { Style::new() };
+    Line::from(vec![
+        Span::raw(format!(
+            " {} {:<10}",
+            if active { "▶" } else { " " },
+            "Symbol"
+        )),
+        avatar(&app.join.name, Some(s)),
+        Span::styled(format!(" {}", s.color_name()), style),
     ])
 }
 
@@ -56,8 +72,9 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
     let inner_w = rect.width.saturating_sub(2) as usize;
     let mut lines: Vec<Line> = vec![
         Line::from(""),
-        input_line("Your name", &j.name, j.row == 0),
-        input_line("Address", &j.address, j.row == 1),
+        input_line("Your name", &j.name, j.row == JOIN_NAME),
+        symbol_line(app, j.row == JOIN_SYMBOL),
+        input_line("Address", &j.address, j.row == JOIN_ADDRESS),
         Line::from(Span::styled(
             "              e.g. 192.168.1.20, or myserver.net:7777",
             dim(),
@@ -73,7 +90,12 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
     }
     for (k, f) in j.found.iter().enumerate().take(6) {
         let place = f.address.to_string();
-        lines.push(table_line(&f.info, Some(&place), j.row == k + 2, 0));
+        lines.push(table_line(
+            &f.info,
+            Some(&place),
+            j.row == k + JOIN_FOUND,
+            0,
+        ));
     }
     lines.push(Line::from(""));
     let status = if app.connecting() {
@@ -88,7 +110,11 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
         )));
     }
     let mut spans = reminder(&[], Place::Join);
-    spans.push(Span::raw("   type to edit"));
+    if j.row == JOIN_SYMBOL {
+        spans.push(Span::raw("   ← → shape   C colour"));
+    } else {
+        spans.push(Span::raw("   type to edit"));
+    }
     let (rect, lines) = screen_box(area, 76, height, lines, vec![Line::from(spans)]);
     frame.render_widget(
         boxed(lines, title_block("Join a network game", rect), rect),

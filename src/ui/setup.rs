@@ -7,6 +7,7 @@ use ratatui::text::{Line, Span};
 
 use holdem::game::{MAX_PLAYERS, MIN_PLAYERS, chips_text};
 
+use super::avatar::avatar;
 use super::style::{centered, dim, key_for, reminder, reminder_spans, yellow};
 use super::text::wrap_text;
 use super::{boxed, screen_box, title_block};
@@ -36,6 +37,13 @@ fn setup_row_text(app: &App, row: SetupRow) -> (&'static str, String, String) {
             "Your name",
             app.join.name.clone(),
             "Type your name for this table; the default comes from client.name in holdem.toml."
+                .to_string(),
+        ),
+        SetupRow::Symbol => (
+            "Your symbol",
+            app.shown_symbol().to_string(),
+            "Shown before your name, for everyone at the table. ← → change the shape, C the \
+             colour; achievements unlock more shapes."
                 .to_string(),
         ),
         SetupRow::Table => (
@@ -189,6 +197,26 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
     let mut lines: Vec<Line> = vec![Line::from("")];
     for (i, row) in rows.iter().enumerate().skip(first).take(visible) {
         let (label, value, _) = setup_row_text(app, *row);
+        let style = if i == selected {
+            yellow()
+        } else {
+            Style::new()
+        };
+        if *row == SetupRow::Symbol {
+            // The symbol in its own colour, then the colour's name.
+            let s = app.shown_symbol();
+            let (before, after) = if i == selected {
+                (format!(" ▶ {label:<21}◀ "), " ▶")
+            } else {
+                (format!("   {label:<21}  "), "")
+            };
+            lines.push(Line::from(vec![
+                Span::styled(before, style),
+                avatar(&app.join.name, Some(s)),
+                Span::styled(format!(" {}{after}", s.color_name()), style),
+            ]));
+            continue;
+        }
         let text = if i == selected && *row == SetupRow::Name {
             // Typed in place: a cursor instead of the ◀ ▶ of stepped values.
             format!(" ▶ {label:<21}  {value}▏")
@@ -196,11 +224,6 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
             format!(" ▶ {label:<21}◀ {value} ▶")
         } else {
             format!("   {label:<21}  {value}")
-        };
-        let style = if i == selected {
-            yellow()
-        } else {
-            Style::new()
         };
         lines.push(Line::from(Span::styled(text, style)));
     }
@@ -242,6 +265,9 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
                     "help",
                 ))),
         )));
+    } else if rows[selected] == SetupRow::Symbol {
+        let colour = (key_for(Place::Setup, Cmd::Color), "colour");
+        lines.push(Line::from(reminder(&[start, colour], Place::Setup)));
     } else {
         lines.push(Line::from(reminder(&[start], Place::Setup)));
     }
