@@ -10,6 +10,11 @@ All notable changes to holdem. The format follows
 - Choose your own symbol: a *Your symbol* row on the setup and join screens (`←` `→` the
   shape, `C` the colour). Everyone at the table sees it, and `W` saves it as `client.symbol`.
   Without a choice you keep the one your name gives.
+- Achievements: 21 of them, many in stages (Winner I, II, III), from winning hands and games
+  to bluffs, big pots, made hands up to a royal flush, comebacks and games with other people.
+  *Achievements* in the main menu shows each with its progress; a notice says when you earn
+  one. Eight stages unlock extra shapes for your symbol. Progress is kept with your statistics
+  in `stats.toml`.
 - `holdem uninstall` removes a copy the release installer put in place: the program, the
   installer's receipt, and `~/.cargo/bin` from your PATH if nothing else is in it. It asks
   first, and keeps your settings and statistics unless you choose otherwise (`--purge`

@@ -3,7 +3,7 @@
 
 use holdem::bot;
 use holdem::card::{Deck, Rng, parse_cards};
-use holdem::eval::Score;
+use holdem::eval::{Category, Score};
 use holdem::game::{Action, Game, GameEvent, HUMAN, Outcome, Rules, State, Street};
 
 fn game(n: usize, stacks: &[u32], button: usize, sb: u32, hpl: u32) -> Game {
@@ -301,9 +301,16 @@ fn the_result_names_the_kicker_when_it_decides() {
     assert_eq!(won.net, 500);
     assert_eq!(won.made.as_deref(), Some("Pair of Kings"));
     assert_eq!(won.against, vec![g.players[1].name.clone()]);
+    assert!(won.kicker && won.all_in);
+    assert_eq!(won.category, Some(Category::Pair));
+    assert_eq!((won.payout, won.big_blind), (1000, 20));
+    assert!(!won.people, "seat 0 played against a bot");
     let lost = g.players[1].last_result.clone().unwrap();
     assert_eq!((lost.outcome, lost.net), (Outcome::LostShowdown, -500));
     assert_eq!(lost.hole, parse_cards("Kc Qd").unwrap());
+    assert!(!lost.kicker);
+    assert_eq!(lost.payout, 0);
+    assert!(lost.people, "the bot played against the person in seat 0");
 
     // Aces against kings: the pairs decide, no kicker is named.
     let mut g = game(2, &[500, 500], 0, 10, 0);

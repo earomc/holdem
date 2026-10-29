@@ -157,6 +157,7 @@ mod tests {
             outcome,
             bluffed,
             against: vec!["Nora".to_string(), "Ben".to_string()],
+            ..HandResult::default()
         }
     }
 

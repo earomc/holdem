@@ -352,6 +352,35 @@ fn the_game_info_window_switches_tabs_and_the_side_panel_follows() {
 }
 
 #[test]
+fn the_achievements_screen_lists_every_achievement() {
+    let mut app = App::new(fast_config(), Some(8), Sound::new(true));
+    app.menu_row = crate::app::MenuItem::ALL
+        .iter()
+        .position(|m| *m == crate::app::MenuItem::Achievements)
+        .unwrap();
+    press(&mut app, KeyCode::Enter);
+    assert_eq!(app.screen, Screen::Achievements);
+    draw_everything(&mut app);
+    let text = screen_text(&app, 100, 45);
+    for name in ["Winner", "Royal Flush", "Quick work", "Network champion"] {
+        assert!(text.contains(name), "{name} missing:\n{text}");
+    }
+    assert!(text.contains("0 of 35 stages earned"), "{text}");
+    assert!(!text.contains("0 of 1)"), "no count for a single hand");
+    assert!(text.contains("unlocks ♛"), "{text}");
+    // Short screens scroll.
+    let _ = screen_text(&app, 80, 23);
+    for _ in 0..40 {
+        press(&mut app, KeyCode::Down);
+    }
+    assert!(app.achievements_scroll > 0);
+    let bottom = screen_text(&app, 80, 23);
+    assert!(bottom.contains("Network champion"), "{bottom}");
+    press(&mut app, KeyCode::Esc);
+    assert_eq!(app.screen, Screen::Menu);
+}
+
+#[test]
 fn a_hosted_game_renders_the_lobby_and_the_table() {
     let mut app = App::new(fast_config(), Some(4), Sound::new(true));
     app.menu_row = 1; // Host a network game

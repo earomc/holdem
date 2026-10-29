@@ -84,8 +84,8 @@ impl Game {
         if contested {
             self.show_hands();
         }
-        self.pay_pots(contested);
-        self.record_results(contested);
+        let kicker_winners = self.pay_pots(contested);
+        self.record_results(contested, &kicker_winners);
         self.events.push(GameEvent::HandSettled);
 
         // The pot has been paid out.
@@ -121,7 +121,7 @@ impl Game {
     }
 
     /// How the hand went for each player dealt in (after the pots are paid).
-    fn record_results(&mut self, contested: bool) {
+    fn record_results(&mut self, contested: bool, kicker_winners: &[usize]) {
         let live: Vec<usize> = (0..self.players.len())
             .filter(|&i| self.players[i].live())
             .collect();
@@ -144,11 +144,19 @@ impl Game {
                 None => Outcome::LostShowdown,
             };
             let at_showdown = contested && p.live();
+            let people = (0..self.players.len())
+                .any(|j| j != i && self.players[j].in_hand && self.players[j].is_human);
             let result = HandResult {
                 hand: self.hand_no,
                 net: i64::from(p.chips) - i64::from(p.start_chips),
                 hole: p.hole.clone(),
                 made: at_showdown.then(|| p.score.map(eval::describe)).flatten(),
+                category: at_showdown.then(|| p.score.map(eval::category)).flatten(),
+                payout: p.payout,
+                big_blind: self.bb,
+                all_in: p.all_in,
+                kicker: kicker_winners.contains(&i),
+                people,
                 outcome,
                 bluffed: p.bluffed_this_hand,
                 against: if at_showdown {
@@ -165,7 +173,8 @@ impl Game {
     }
 
     /// Splits the chips into the main and side pots and pays their winners.
-    fn pay_pots(&mut self, contested: bool) {
+    /// Returns the players who won a pot their kicker decided.
+    fn pay_pots(&mut self, contested: bool) -> Vec<usize> {
         let totals: Vec<u32> = self.players.iter().map(|p| p.total).collect();
         let live: Vec<bool> = self.players.iter().map(Player::live).collect();
         let scores: Vec<Option<Score>> = self.players.iter().map(|p| p.score).collect();
@@ -175,18 +184,41 @@ impl Game {
         let awards = award_pots(&pots, &scores, self.button);
         let many = awards.len() > 1;
         let mut lines = Vec::new();
+        let mut kicker_winners = Vec::new();
         for (k, (award, pot)) in awards.iter().zip(&pots).enumerate() {
             for (&w, &share) in award.winners.iter().zip(award.shares.iter()) {
                 self.players[w].chips += share;
                 self.players[w].payout += share;
             }
-            lines.push(self.award_text(k, many, award, pot, contested));
+            let kicker = if contested {
+                self.deciding_kicker(award, pot)
+            } else {
+                None
+            };
+            if kicker.is_some() {
+                kicker_winners.extend(&award.winners);
+            }
+            lines.push(self.award_text(k, many, award, kicker, contested));
         }
         for line in &lines {
             self.log(line.clone());
         }
         self.result_lines = lines;
         self.awards = awards;
+        kicker_winners
+    }
+
+    /// The kicker that won `award`, if the best hand shown against it reads the
+    /// same in words. Mucked cards stay secret, so only shown hands count.
+    fn deciding_kicker(&self, award: &Award, pot: &Pot) -> Option<u8> {
+        let score = self.players[award.winners[0]].score?;
+        let runner_up = pot
+            .eligible
+            .iter()
+            .filter(|i| !award.winners.contains(i) && self.players[**i].shown)
+            .filter_map(|&i| self.players[i].score)
+            .max()?;
+        eval::deciding_kicker(score, runner_up)
     }
 
     /// The log line for pot number `k` (of several if `many`).
@@ -195,7 +227,7 @@ impl Game {
         k: usize,
         many: bool,
         award: &Award,
-        pot: &Pot,
+        kicker: Option<u8>,
         contested: bool,
     ) -> String {
         let label = if !many {
@@ -212,14 +244,7 @@ impl Game {
             .collect();
         let how = if contested {
             let score = self.players[award.winners[0]].score.unwrap_or(0);
-            // The best hand shown against it: mucked cards stay secret.
-            let runner_up = pot
-                .eligible
-                .iter()
-                .filter(|i| !award.winners.contains(i) && self.players[**i].shown)
-                .filter_map(|&i| self.players[i].score)
-                .max();
-            match runner_up.and_then(|r| eval::deciding_kicker(score, r)) {
+            match kicker {
                 Some(rank) => format!(
                     " with {}, {} kicker",
                     eval::describe(score),

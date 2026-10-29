@@ -17,13 +17,14 @@ use holdem::card::Rng;
 use holdem::config::{Config, SpeedConfig, TableConfig};
 use holdem::game::{Rules, State};
 use holdem::net::{Connection, Found};
+use holdem::player::achievements::{self, Progress};
 use holdem::player::history::{self, Record};
 use holdem::player::symbol::{self, Symbol};
 use holdem::protocol::TableView;
 
 use crate::help;
 use crate::session::Session;
-use crate::sound::Sound;
+use crate::sound::{Cue, Sound};
 
 mod input;
 mod lifecycle;
@@ -54,6 +55,7 @@ choices!(
         Solo => "Play against bots",
         Host => "Host a network game",
         Join => "Join a network game",
+        Achievements => "Achievements",
         Settings => "Settings",
         Help => "Help",
         Quit => "Quit",
@@ -88,6 +90,7 @@ pub enum Screen {
     Lobby,
     Table,
     Over,
+    Achievements,
 }
 
 /// The tabs of the game info window.
@@ -277,6 +280,9 @@ pub struct App {
     pub show_settings: bool,
     /// Index into `SettingsRow::ALL`.
     pub settings_row: usize,
+    /// Lines scrolled down the achievements screen.
+    pub achievements_scroll: usize,
+    pub achievements_max: Cell<usize>,
     /// The leave window, with the highlighted choice (index into `LeaveChoice::ALL`).
     pub leave: Option<usize>,
 
@@ -413,6 +419,8 @@ impl App {
             show_settings: false,
             settings_row: 0,
             leave: None,
+            achievements_scroll: 0,
+            achievements_max: Cell::new(0),
             all_in_armed: false,
             toast: None,
             quit: false,
@@ -519,9 +527,40 @@ impl App {
             .unwrap_or_else(|| Symbol::for_name(&self.join.name))
     }
 
-    /// The shapes you may choose from (indices into [`symbol::GLYPHS`]).
+    /// The shapes you may choose from (indices into [`symbol::GLYPHS`]): the
+    /// open ones and those your achievements unlocked.
     pub fn available_glyphs(&self) -> Vec<u8> {
-        (0..symbol::BASE_GLYPHS as u8).collect()
+        let mut shapes: Vec<u8> = (0..symbol::BASE_GLYPHS as u8).collect();
+        shapes.extend(achievements::unlocked_glyphs(&self.total_progress()));
+        shapes
+    }
+
+    /// Your progress towards the achievements: the saved one, plus this game's
+    /// until it is saved.
+    pub fn total_progress(&self) -> Progress {
+        let saved = self.saved_stats().progress;
+        match self.session.as_ref() {
+            Some(s) if !s.stats_saved => saved.plus(&s.progress),
+            _ => saved,
+        }
+    }
+
+    /// Tells about every achievement stage reached since `before`.
+    pub(super) fn announce(&mut self, before: &Progress) {
+        let earned = achievements::earned(before, &self.total_progress());
+        if earned.is_empty() {
+            return;
+        }
+        self.sound.play(Cue::Fanfare, 300);
+        // One notice: a second would replace the first.
+        let text = match earned.as_slice() {
+            [(name, what)] => format!("Achievement: {name} ({what})"),
+            several => {
+                let names: Vec<&str> = several.iter().map(|(n, _)| n.as_str()).collect();
+                format!("Achievements: {}", names.join(", "))
+            }
+        };
+        self.notify(text);
     }
 
     /// Steps your symbol's shape through the ones you may use.
@@ -564,26 +603,43 @@ impl App {
         record
     }
 
-    /// Adds this game's statistics to your saved ones, once per game.
+    /// Counts the end of the game towards the achievements, and adds this
+    /// game's statistics and progress to your saved ones, once per game.
     pub(super) fn save_game_stats(&mut self) {
+        let before = self.total_progress();
         let Some(session) = self.session.as_mut() else {
             return;
         };
         if session.stats_saved {
             return;
         }
-        if session.view.is_none() {
+        let Some(view) = session.view.as_ref() else {
             return;
+        };
+        let mut end = session.so_far;
+        end.hosted = session.kind == crate::session::Kind::Host;
+        if view.game_over {
+            end.players = view.standings.len() as u32;
+            end.place = view
+                .standings
+                .iter()
+                .find(|s| s.is_human && s.name == session.name)
+                .and_then(|s| s.place);
         }
+        session.progress.game(&end);
+        self.announce(&before);
+        let Some(session) = self.session.as_mut() else {
+            return;
+        };
         session.stats_saved = true;
-        let stats = session.game_stats;
-        if stats.hands == 0 {
+        let (stats, progress) = (session.game_stats, session.progress);
+        if stats.hands == 0 && progress == Progress::default() {
             return;
         }
         let Some(path) = self.stats_file.clone() else {
             return;
         };
-        if let Err(e) = history::add_game(&path, &self.stats_name(), &stats) {
+        if let Err(e) = history::add_game(&path, &self.stats_name(), &stats, &progress) {
             self.notify(format!("Your statistics could not be saved: {e}"));
         }
         // Read again next time, with this game in.

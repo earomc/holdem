@@ -3,6 +3,7 @@
 
 use holdem::game::HandResult;
 use holdem::net::{Connection, Server};
+use holdem::player::achievements::{GameEnd, Progress};
 use holdem::player::symbol::Symbol;
 use holdem::protocol::{Announcement, ClientMsg, LobbyView, ServerMsg, TableView};
 use holdem::stats::Stats;
@@ -38,6 +39,10 @@ pub struct Session {
     pub game_stats: Stats,
     /// This game's statistics have been added to your saved ones.
     pub stats_saved: bool,
+    /// This game's progress towards the achievements.
+    pub progress: Progress,
+    /// How the game went for you so far, for the achievements at its end.
+    pub so_far: GameEnd,
     /// Where others can reach a hosted table, e.g. "192.168.1.20:7777".
     pub share: Option<String>,
     /// Set when the table hung up on us.
@@ -89,6 +94,8 @@ impl Session {
             my_hands: Vec::new(),
             game_stats: Stats::default(),
             stats_saved: false,
+            progress: Progress::default(),
+            so_far: GameEnd::default(),
             share,
             closed: None,
             server_app: String::new(),
@@ -123,6 +130,8 @@ impl Session {
                     self.my_hands.clear();
                     self.game_stats = Stats::default();
                     self.stats_saved = false;
+                    self.progress = Progress::default();
+                    self.so_far = GameEnd::default();
                 }
                 ServerMsg::Table(view) => {
                     let mut view = *view;
@@ -135,8 +144,31 @@ impl Session {
                     if let Some(r) = &view.your_result
                         && self.my_hands.last().is_none_or(|h| h.hand != r.hand)
                     {
+                        self.progress.hand(r);
                         self.my_hands.push(r.clone());
+                        // The view that brings a result shows the stacks after the hand.
+                        if let Some(me) = view.you {
+                            let chips = view.seats[me].chips;
+                            let s = &mut self.so_far;
+                            s.lowest = if s.hands_played == 0 {
+                                chips
+                            } else {
+                                s.lowest.min(chips)
+                            };
+                            s.highest = s.highest.max(chips);
+                            s.hands_played += 1;
+                        }
                     }
+                    self.so_far.starting = view.rules.starting_chips;
+                    self.so_far.hands = view.hand_no;
+                    if let Some(me) = view.you {
+                        self.so_far.rebought |= view.seats[me].rebuys > 0;
+                    }
+                    self.so_far.people |= view
+                        .seats
+                        .iter()
+                        .enumerate()
+                        .any(|(i, s)| s.is_human && !s.vacant && Some(i) != view.you);
                     if view.you.is_some() {
                         self.game_stats = view.your_stats;
                     }

@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::bot::{self, Personality};
 use crate::card::{Card, Deck, Rng};
-use crate::eval::Score;
+use crate::eval::{Category, Score};
 use crate::stats::Stats;
 
 mod betting;
@@ -221,6 +221,18 @@ pub struct HandResult {
     pub bluffed: bool,
     /// The others still in at the showdown.
     pub against: Vec<String>,
+    /// The kind of hand made, for players who reached the showdown.
+    pub category: Option<Category>,
+    /// Chips won.
+    pub payout: u32,
+    /// The big blind of the hand.
+    pub big_blind: u32,
+    /// All-in by the end of the hand.
+    pub all_in: bool,
+    /// Won a pot that the kicker decided.
+    pub kicker: bool,
+    /// Another person (not a bot) was dealt in.
+    pub people: bool,
 }
 
 impl Player {

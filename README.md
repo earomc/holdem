@@ -14,6 +14,7 @@ Play against computer opponents, or with other people over your home network or 
 - Optional table rules: antes, straddle, rebuys, dead button, mucking, a hand limit, players
   coming and going.
 - A win-chance hint and an estimate of your own playing style.
+- Achievements across all your games, some unlocking extra shapes for your symbol.
 - Synthesized sound effects (or a build without any audio libraries for servers).
 - Everything adjustable in `holdem.toml`, with every setting explained.
 

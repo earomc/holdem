@@ -88,6 +88,17 @@ allowed by default.
 | Win-chance hint | Whether players at the table may turn on the win-chance hint. When it is not allowed, the settings window shows that and it cannot be switched on. |
 | Players come and go | Bots leave now and then with their chips; new bots sit down in empty seats. The chances are in `[tables.fluctuation]`. |
 
+## Achievements
+
+*Achievements* in the main menu lists them all: winning hands and games, made hands from a
+straight to a royal flush, bluffs, big pots, all-ins, long and quick games, comebacks, and
+playing with other people. Many come in stages (Winner I, II, III). Each line shows what comes
+next and how far you are. A notice at the table tells you when you earn one. Some stages
+unlock extra shapes for your symbol (♛ ✦ ✠ ↯ ‽ ♞ ↺ ⌘).
+
+Progress counts in every game you play, also at someone else's table, and is kept with your
+statistics under your name in `stats.toml`.
+
 ## Your playing style
 
 Press **P** at the table (the *Your style* tab of game info), or look at the final standings.

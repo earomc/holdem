@@ -1,5 +1,6 @@
-//! Your playing statistics over all your games, kept in `stats.toml` in your
-//! settings folder (next to `holdem.toml`), one entry per player name.
+//! Your playing statistics and your progress towards the achievements over
+//! all your games, kept in `stats.toml` in your settings folder (next to
+//! `holdem.toml`), one entry per player name.
 //!
 //! The file is only a convenience: when it is missing or unreadable, the
 //! counts simply start from nothing.
@@ -9,6 +10,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+use super::achievements::Progress;
 use crate::stats::Stats;
 
 pub const FILE_NAME: &str = "stats.toml";
@@ -20,6 +22,8 @@ pub struct Record {
     pub games: u32,
     #[serde(flatten)]
     pub stats: Stats,
+    /// Towards the achievements (missing from files of holdem 0.9).
+    pub progress: Progress,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -63,12 +67,13 @@ pub fn load(path: &Path, name: &str) -> Record {
 
 /// Adds one game to `name`'s counts. A broken file is left alone (and the
 /// game not counted) rather than overwritten.
-pub fn add_game(path: &Path, name: &str, game: &Stats) -> Result<(), String> {
+pub fn add_game(path: &Path, name: &str, game: &Stats, progress: &Progress) -> Result<(), String> {
     let mut file = read(path)?;
     let name = key(&file, name).to_string();
     let record = file.players.entry(name).or_default();
     record.games += 1;
     record.stats.add(game);
+    record.progress = record.progress.plus(progress);
     let text = toml::to_string(&file).map_err(|e| e.to_string())?;
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
@@ -97,9 +102,9 @@ mod tests {
             bluffs: 1,
             ..Stats::default()
         };
-        add_game(&path, "Mo", &game).unwrap();
-        add_game(&path, "mo", &game).unwrap();
-        add_game(&path, "Ann", &game).unwrap();
+        add_game(&path, "Mo", &game, &Progress::default()).unwrap();
+        add_game(&path, "mo", &game, &Progress::default()).unwrap();
+        add_game(&path, "Ann", &game, &Progress::default()).unwrap();
         let mo = load(&path, "MO");
         assert_eq!(mo.games, 2);
         assert_eq!((mo.stats.hands, mo.stats.vpip, mo.stats.bluffs), (24, 8, 2));
@@ -117,7 +122,34 @@ mod tests {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(&path, "this is [not toml").unwrap();
         assert_eq!(load(&path, "Mo"), Record::default());
-        assert!(add_game(&path, "Mo", &Stats::default()).is_err());
+        assert!(add_game(&path, "Mo", &Stats::default(), &Progress::default()).is_err());
         assert_eq!(std::fs::read_to_string(&path).unwrap(), "this is [not toml");
+    }
+
+    #[test]
+    fn progress_is_kept_and_old_files_still_read() {
+        let path = scratch("progress");
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        // A file of holdem 0.9: statistics, no progress.
+        std::fs::write(
+            &path,
+            "[players.Mo]\ngames = 2\nhands = 30\nvpip = 9\npfr = 4\nbets = 12\ncalls = 8\n\
+             postflop_bets = 6\nbluffs = 1\n",
+        )
+        .unwrap();
+        let old = load(&path, "Mo");
+        assert_eq!((old.games, old.stats.hands), (2, 30));
+        assert_eq!(old.progress, Progress::default());
+        let won = Progress {
+            hands_won: 4,
+            ..Progress::default()
+        };
+        add_game(&path, "Mo", &Stats::default(), &won).unwrap();
+        add_game(&path, "Mo", &Stats::default(), &won).unwrap();
+        let now = load(&path, "Mo");
+        assert_eq!(
+            (now.games, now.stats.hands, now.progress.hands_won),
+            (4, 30, 8)
+        );
     }
 }

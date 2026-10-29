@@ -35,6 +35,7 @@ impl App {
                 Screen::Lobby => self.lobby_key(code),
                 Screen::Table => self.table_key(code),
                 Screen::Over => self.over_key(code),
+                Screen::Achievements => self.achievements_key(code),
             }
         }
         // Answer at once instead of waiting for the next tick.
@@ -165,11 +166,32 @@ impl App {
                     self.join.status.clear();
                     self.last_discovery = None;
                 }
+                MenuItem::Achievements => {
+                    self.screen = Screen::Achievements;
+                    self.achievements_scroll = 0;
+                }
                 MenuItem::Settings => self.common(Cmd::Settings),
                 MenuItem::Help => self.common(Cmd::Help),
                 MenuItem::Quit => self.quit = true,
             },
             Some(Cmd::Quit) => self.quit = true,
+            Some(cmd) => self.common(cmd),
+            None => {}
+        }
+    }
+
+    fn achievements_key(&mut self, code: KeyCode) {
+        let max = self.achievements_max.get();
+        match keys::command(Place::Achievements, code) {
+            Some(Cmd::Down) => self.achievements_scroll = (self.achievements_scroll + 1).min(max),
+            Some(Cmd::Up) => self.achievements_scroll = self.achievements_scroll.saturating_sub(1),
+            Some(Cmd::PageDown) => {
+                self.achievements_scroll = (self.achievements_scroll + PAGE).min(max)
+            }
+            Some(Cmd::PageUp) => {
+                self.achievements_scroll = self.achievements_scroll.saturating_sub(PAGE)
+            }
+            Some(Cmd::Back) => self.screen = Screen::Menu,
             Some(cmd) => self.common(cmd),
             None => {}
         }

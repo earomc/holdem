@@ -346,6 +346,10 @@ fn your_statistics_are_kept_once_per_game() {
         app.return_to_menu(); // ... and neither does leaving afterwards
         let kept = holdem::player::history::load(&file, "mo");
         assert_eq!(kept.games, game);
+        assert!(
+            kept.progress.hands_played >= game,
+            "the hands count towards the achievements"
+        );
         assert_eq!(app.saved_stats(), kept, "the cache is read again");
     }
     let _ = std::fs::remove_dir_all(&dir);
@@ -383,4 +387,38 @@ fn you_choose_your_symbol_on_the_setup_and_join_screens() {
     press(&mut app, KeyCode::Char('c'));
     assert_ne!(app.shown_symbol().color, chosen.color);
     assert_eq!(app.join.name, "Mo", "C changes the colour, it is not typed");
+}
+
+#[test]
+fn achievements_unlock_shapes_and_are_announced() {
+    use holdem::player::achievements::Progress;
+    let dir = std::env::temp_dir().join(format!("holdem-app-achievements-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let file = dir.join(holdem::player::history::FILE_NAME);
+    let royal = Progress {
+        hands_won: 1,
+        made_hands: 1 << 5,
+        ..Progress::default()
+    };
+    holdem::player::history::add_game(&file, "Mo", &holdem::stats::Stats::default(), &royal)
+        .unwrap();
+    let mut config = Config::default();
+    config.client.name = "Mo".to_string();
+    let mut app = App::new(config, Some(1), Sound::new(true));
+    app.stats_file = Some(file);
+    assert_eq!(app.total_progress(), royal);
+    let crown = 12;
+    assert_eq!(holdem::player::symbol::GLYPHS[crown], "♛");
+    assert!(app.available_glyphs().contains(&(crown as u8)));
+    let mut seen = false;
+    for _ in 0..holdem::player::symbol::GLYPHS.len() {
+        app.step_symbol_shape(1);
+        seen |= app.shown_symbol().glyph == crown as u8;
+    }
+    assert!(seen, "the unlocked crown can be chosen");
+
+    app.announce(&Progress::default());
+    let notice = app.toast_text().unwrap_or_default().to_string();
+    assert_eq!(notice, "Achievements: Winner I, Royal Flush");
+    let _ = std::fs::remove_dir_all(&dir);
 }

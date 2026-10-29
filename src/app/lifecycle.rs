@@ -120,6 +120,7 @@ impl App {
         self.poll_connecting();
         self.poll_discovery();
         let paused = self.overlay_open();
+        let before = self.total_progress();
         let Some(session) = self.session.as_mut() else {
             return;
         };
@@ -142,6 +143,7 @@ impl App {
         }
         self.play_events(&update.events);
         self.on_view();
+        self.announce(&before);
     }
 
     /// Switches screens to match what the table is doing.

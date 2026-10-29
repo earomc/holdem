@@ -13,6 +13,7 @@ use self::style::{framed, yellow};
 use self::text::fit;
 use crate::app::{App, Screen};
 
+mod achievements;
 mod avatar;
 mod cards;
 mod choose;
@@ -43,6 +44,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
         Screen::Lobby => lobby::draw(frame, app, area),
         Screen::Table => table::draw(frame, app, area),
         Screen::Over => over::draw(frame, app, area),
+        Screen::Achievements => achievements::draw(frame, app, area),
     }
     if app.show_settings {
         popups::settings(frame, app, area);

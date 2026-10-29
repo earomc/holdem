@@ -5,11 +5,13 @@
 //! `category << 20 | k0 << 16 | k1 << 12 | k2 << 8 | k3 << 4 | k4`, where `k0..k4`
 //! are the ranks that break ties, most significant first.
 
+use serde::{Deserialize, Serialize};
+
 use crate::card::Card;
 
 pub type Score = u32;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize)]
 pub enum Category {
     HighCard,
     Pair,

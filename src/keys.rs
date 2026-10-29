@@ -21,6 +21,8 @@ pub enum Place {
     Table,
     Raise,
     Over,
+    /// The achievements screen.
+    Achievements,
     HelpWindow,
     /// The game info window: the table log, your hands and your style.
     InfoWindow,
@@ -352,6 +354,24 @@ pub const SECTIONS: &[Section] = &[
         ],
     },
     Section {
+        place: Place::Achievements,
+        title: "ACHIEVEMENTS",
+        rows: &[
+            row(UP_DOWN, "scroll", "scroll"),
+            row(
+                &[(&[PageUp], Cmd::PageUp), (&[PageDown], Cmd::PageDown)],
+                "scroll faster",
+                "",
+            ),
+            row(
+                &[(&[Esc, Enter, Char('q')], Cmd::Back)],
+                "back to the main menu",
+                "back",
+            ),
+            OPEN_HELP,
+        ],
+    },
+    Section {
         place: Place::Over,
         title: "FINAL STANDINGS",
         rows: &[
@@ -590,6 +610,7 @@ mod tests {
         &[Place::Table, Place::HandOver],
         &[Place::Raise],
         &[Place::Over],
+        &[Place::Achievements],
         &[Place::HelpWindow],
         &[Place::InfoWindow],
         &[Place::SettingsWindow],
