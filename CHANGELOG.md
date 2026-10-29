@@ -13,6 +13,8 @@ All notable changes to holdem. The format follows
   deletes them, `--yes` does not ask). The README also lists the steps by hand.
 
 ### Fixed
+- At someone else's table the settings window shows the table's own speed, and changing it
+  says that the table sets the speed. Before, the speed seemed to change but did nothing.
 - The Windows install commands in the README download the installer first and then run it:
   Microsoft Defender blocks the one-line `irm … | iex` form (as `Trojan:Win32/Commando.A!ml`).
 

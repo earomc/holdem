@@ -71,7 +71,11 @@ pub(super) fn settings(frame: &mut Frame, app: &App, area: Rect) {
     for (i, row) in SettingsRow::ALL.iter().enumerate() {
         let label = row.label();
         let value = match row {
-            SettingsRow::Speed => format!("{} ({} ms per move)", app.speed().name, app.speed().ms),
+            SettingsRow::Speed => match app.speed_set_by_table() {
+                Some(0) => "set by the table".to_string(),
+                Some(ms) => format!("{ms} ms per move (set by the table)"),
+                None => format!("{} ({} ms per move)", app.speed().name, app.speed().ms),
+            },
             SettingsRow::Volume => app.volume_label(),
             SettingsRow::WinChance if !app.hints_allowed() => {
                 "Not allowed at this table".to_string()

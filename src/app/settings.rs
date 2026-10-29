@@ -77,6 +77,13 @@ impl App {
         }
     }
 
+    /// At someone else's table the table sets the speed: `Some` with its pace
+    /// in milliseconds per move (0 while it is not known yet).
+    pub fn speed_set_by_table(&self) -> Option<u32> {
+        let session = self.session.as_ref().filter(|s| !s.is_owner())?;
+        Some(session.view.as_ref().map_or(0, |v| v.speed_ms))
+    }
+
     pub(super) fn change_speed(&mut self, delta: i32) {
         self.speed = cycle(self.speed, self.config.speeds.len(), delta);
         let ms = self.speed().ms;
@@ -102,6 +109,9 @@ impl App {
 
     pub(super) fn change_setting(&mut self, delta: i32) {
         match SettingsRow::ALL[self.settings_row] {
+            SettingsRow::Speed if self.speed_set_by_table().is_some() => {
+                self.notify("The table sets the speed.");
+            }
             SettingsRow::Speed => self.change_speed(delta),
             SettingsRow::Volume => self.change_volume(delta),
             SettingsRow::WinChance => {

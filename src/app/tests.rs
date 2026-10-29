@@ -236,6 +236,17 @@ fn a_server_with_several_tables_asks_which_one() {
     press(&mut app, KeyCode::Enter);
     wait(&mut app, Screen::Lobby);
     assert_eq!(app.session.as_ref().unwrap().table, "High");
+
+    // A guest cannot change the table's speed, and is told so.
+    let speed = app.speed;
+    press(&mut app, KeyCode::Char('s'));
+    assert!(app.show_settings);
+    app.settings_row = 0;
+    assert_eq!(SettingsRow::ALL[0], SettingsRow::Speed);
+    press(&mut app, KeyCode::Right);
+    assert_eq!(app.speed, speed, "nothing changed");
+    assert_eq!(app.toast_text(), Some("The table sets the speed."));
+    assert!(app.speed_set_by_table().is_some());
 }
 
 #[test]
