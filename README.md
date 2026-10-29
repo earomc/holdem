@@ -46,8 +46,12 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/earomc/holdem/releases/
 Windows (PowerShell):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "irm https://github.com/earomc/holdem/releases/latest/download/holdem-installer.ps1 | iex"
+irm https://github.com/earomc/holdem/releases/latest/download/holdem-installer.ps1 -OutFile "$env:TEMP\holdem-installer.ps1"
+powershell -ExecutionPolicy Bypass -File "$env:TEMP\holdem-installer.ps1"
 ```
+
+Use these two lines rather than the one-line `irm … | iex` form shown on the release page:
+Microsoft Defender blocks that one, flagging its command line as `Trojan:Win32/Commando.A!ml`.
 
 ### Without sound (`holdem-server`), for servers
 
@@ -60,7 +64,8 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/earomc/holdem/releases/
 Windows (PowerShell):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "irm https://github.com/earomc/holdem/releases/latest/download/holdem-server-installer.ps1 | iex"
+irm https://github.com/earomc/holdem/releases/latest/download/holdem-server-installer.ps1 -OutFile "$env:TEMP\holdem-server-installer.ps1"
+powershell -ExecutionPolicy Bypass -File "$env:TEMP\holdem-server-installer.ps1"
 ```
 
 On a server, start a table with `holdem serve`; [Running a server](docs/server.md) explains

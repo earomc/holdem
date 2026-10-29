@@ -12,6 +12,10 @@ All notable changes to holdem. The format follows
   first, and keeps your settings and statistics unless you choose otherwise (`--purge`
   deletes them, `--yes` does not ask). The README also lists the steps by hand.
 
+### Fixed
+- The Windows install commands in the README download the installer first and then run it:
+  Microsoft Defender blocks the one-line `irm … | iex` form (as `Trojan:Win32/Commando.A!ml`).
+
 ## [0.9.0] - 2026-10-28
 
 ### Added
