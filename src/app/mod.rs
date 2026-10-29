@@ -121,7 +121,7 @@ impl InfoTab {
 pub enum SetupRow {
     /// Your name at the table, typed in place (the same one the join screen uses).
     Name,
-    /// Your symbol: ←→ its shape, C its colour.
+    /// Your symbol: Enter or ←→ open the window to choose it.
     Symbol,
     /// Which of the `[[tables]]` to start from (shown when there are several).
     Table,

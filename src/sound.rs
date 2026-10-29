@@ -41,10 +41,12 @@ pub enum Cue {
     Turn,
     /// Menu navigation.
     Tick,
+    /// Something not allowed, like taking a locked symbol: a short low buzz.
+    Deny,
 }
 
 impl Cue {
-    pub const ALL: [Cue; 15] = [
+    pub const ALL: [Cue; 16] = [
         Cue::Deal,
         Cue::Flop,
         Cue::Card,
@@ -60,6 +62,7 @@ impl Cue {
         Cue::Fanfare,
         Cue::Turn,
         Cue::Tick,
+        Cue::Deny,
     ];
 }
 
@@ -122,6 +125,21 @@ fn tone(freq: f32, dur: f32, amp: f32, decay: f32) -> Vec<f32> {
         })
         .collect();
     fade_edges(&mut buf, 0.004);
+    buf
+}
+
+/// A harsh low buzz: a softly clipped sine (nearly a square wave), held
+/// briefly and then cut off.
+fn buzz(freq: f32, dur: f32, amp: f32) -> Vec<f32> {
+    let n = samples(dur);
+    let mut buf: Vec<f32> = (0..n)
+        .map(|i| {
+            let t = i as f32 / SR;
+            let env = (-6.0 * t).exp();
+            amp * env * (4.0 * (TAU * freq * t).sin()).tanh()
+        })
+        .collect();
+    fade_edges(&mut buf, 0.006);
     buf
 }
 
@@ -268,6 +286,10 @@ pub fn synthesize(cue: Cue) -> Vec<f32> {
             mix(&mut out, 0.09, &tone(880.0, 0.4, 0.2, 7.0));
         }
         Cue::Tick => mix(&mut out, 0.0, &click(1800.0, 0.025, 0.25, 220.0)),
+        Cue::Deny => {
+            mix(&mut out, 0.0, &buzz(140.0, 0.09, 0.3));
+            mix(&mut out, 0.12, &buzz(140.0, 0.12, 0.3));
+        }
     }
     normalize(&mut out, 0.9);
     out

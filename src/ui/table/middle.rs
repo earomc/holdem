@@ -18,7 +18,7 @@ use crate::ui::style::{bold, dim, framed, green};
 use crate::ui::text::{fit, text_width};
 
 /// Adds blank lines above `lines` so they sit in the middle of a box `area` tall.
-pub(super) fn centre_vertically(mut lines: Vec<Line<'static>>, area: Rect) -> Vec<Line<'static>> {
+pub(super) fn center_vertically(mut lines: Vec<Line<'static>>, area: Rect) -> Vec<Line<'static>> {
     let inner = area.height.saturating_sub(2) as usize;
     let pad = inner.saturating_sub(lines.len()) / 2;
     let mut out = vec![Line::from(""); pad];
@@ -94,7 +94,7 @@ pub(super) fn draw_board(frame: &mut Frame, v: &TableView, area: Rect) {
     } else {
         String::new()
     };
-    let lines = centre_vertically(
+    let lines = center_vertically(
         vec![
             board_line(&v.board),
             Line::from(""),
@@ -205,7 +205,7 @@ pub(super) fn draw_pot(frame: &mut Frame, app: &App, v: &TableView, area: Rect) 
         Line::from("")
     };
     lines.push(extra);
-    let lines = centre_vertically(lines, area);
+    let lines = center_vertically(lines, area);
     frame.render_widget(boxed(lines, block, area).alignment(Alignment::Center), area);
 }
 

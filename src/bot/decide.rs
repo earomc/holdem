@@ -180,7 +180,7 @@ pub(super) fn think(
 
 /// The strength score reached by only the best `share` of starting hands.
 /// Measured over random hands at 2 to 9 players (`examples/strength.rs`); the
-/// curve hardly depends on the table size because strength is normalised.
+/// curve hardly depends on the table size because strength is normalized.
 fn top_share(share: f32) -> f32 {
     const CURVE: [(f32, f32); 11] = [
         (0.00, 0.70),

@@ -1,6 +1,6 @@
 //! Drawing every screen. Each screen has its module (`menu`, `setup`, `join`,
 //! `lobby`, `table`, `over`), and the windows that open on top (help, log,
-//! settings, ...) are in `popups`. Shared pieces: `style` (colours, frames, key
+//! settings, ...) are in `popups`. Shared pieces: `style` (colors, frames, key
 //! reminders), `text` (widths and wrapping), `cards` and `log`.
 
 use ratatui::Frame;

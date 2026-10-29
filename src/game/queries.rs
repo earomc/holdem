@@ -98,7 +98,7 @@ impl Game {
 
     /// Identifies the decision currently awaited. It changes with every action
     /// and every new hand, so an answer meant for an earlier decision (a key
-    /// pressed twice, a message that crossed a new deal) can be recognised.
+    /// pressed twice, a message that crossed a new deal) can be recognized.
     pub fn turn_id(&self) -> u64 {
         (u64::from(self.hand_no) << 32) | (self.action_count & 0xFFFF_FFFF)
     }

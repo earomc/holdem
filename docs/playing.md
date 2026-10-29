@@ -65,13 +65,14 @@ a wide terminal the panel beside the table shows the log tab you looked at last.
 
 ## Your symbol
 
-Every player has a coloured symbol before their name, on the seats and in the lobby. Bots and
+Every player has a colored symbol before their name, on the seats and in the lobby. Bots and
 anyone who has not chosen get the one their name gives, always the same. Choose your own on
 the *Your symbol* row of the setup or join screen: `Enter` (or `←` `→`) opens a window with
-every shape and colour. The arrow keys move between them, `Enter` takes your choice and `Esc`
-keeps the one you had. Shapes you have not unlocked yet show as `▒`, with the achievement that
-unlocks them. Everyone at the table sees your choice (players with holdem 0.9 or older see the one your name
-gives). `W` saves it as `client.symbol`. More shapes unlock with achievements.
+every shape and color. The arrow keys move between them. `Enter` on a shape picks it and moves
+on to the colors, where `Enter` takes your symbol; `Esc` keeps the one you had. Shapes you have
+not unlocked yet show as `▒`, with the achievement that unlocks them, and trying to pick one
+buzzes. Everyone at the table sees your choice (players with holdem 0.9 or older see the one
+your name gives). `W` saves it as `client.symbol`. More shapes unlock with achievements.
 
 ## Table options
 

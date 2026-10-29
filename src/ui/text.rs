@@ -128,7 +128,7 @@ impl Chunk {
 }
 
 /// Splits a line's spans into words and the spaces between them. A word may
-/// run over several spans (a coloured part next to a plain one), and a no-break
+/// run over several spans (a colored part next to a plain one), and a no-break
 /// space ([`NO_BREAK`]) belongs to the word.
 fn chunks(line: &Line<'static>) -> Vec<Chunk> {
     let breaks = |c: char| c.is_whitespace() && c != NO_BREAK;
@@ -284,7 +284,7 @@ mod tests {
                 assert!(l.width() <= width, "{l:?} is wider than {width}");
             }
             assert_eq!(letters(&wrapped), letters(std::slice::from_ref(&line)));
-            // Every key keeps its colour.
+            // Every key keeps its color.
             let keys = wrapped
                 .iter()
                 .flat_map(|l| l.spans.iter())

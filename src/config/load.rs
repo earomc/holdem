@@ -162,7 +162,7 @@ impl Config {
         if !c.symbol.trim().is_empty() && crate::player::symbol::Symbol::parse(&c.symbol).is_none()
         {
             return Err(format!(
-                "client.symbol \"{}\" is not a shape and a colour, like \"★ cyan\" (shapes: {}; colours: {})",
+                "client.symbol \"{}\" is not a shape and a color, like \"★ cyan\" (shapes: {}; colors: {})",
                 c.symbol,
                 crate::player::symbol::GLYPHS.join(" "),
                 crate::player::symbol::COLORS.join(", ")

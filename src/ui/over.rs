@@ -81,7 +81,7 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
         Line::from(Span::styled(headline, yellow())),
         Line::from(""),
     ];
-    // The rows form one block, centred as a whole so that the columns line up.
+    // The rows form one block, centered as a whole so that the columns line up.
     let rows: Vec<(String, Style)> = v
         .standings
         .iter()

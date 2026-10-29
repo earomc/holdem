@@ -1,4 +1,4 @@
-//! Cards as coloured text.
+//! Cards as colored text.
 
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
@@ -22,7 +22,7 @@ fn card_span(c: Card) -> Span<'static> {
     )
 }
 
-/// Cards as short coloured text for lists: " A♦ 10♣", each three columns.
+/// Cards as short colored text for lists: " A♦ 10♣", each three columns.
 pub(super) fn small_cards(cards: &[Card], dimmed: bool) -> Vec<Span<'static>> {
     let mut spans = Vec::new();
     for (i, c) in cards.iter().enumerate() {

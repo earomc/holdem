@@ -1,6 +1,6 @@
 //! The screenshots in `docs/screenshots/`, drawn by the game itself:
 //! `cargo test -p holdem screenshots -- --ignored` redraws them. Each is the
-//! screen in a test terminal, written as an SVG with the terminal's colours.
+//! screen in a test terminal, written as an SVG with the terminal's colors.
 
 use std::fmt::Write;
 use std::path::PathBuf;
@@ -27,7 +27,7 @@ const CELL_H: f32 = 19.0;
 const FOREGROUND: &str = "#d4d4d4";
 const BACKGROUND: &str = "#1e1e1e";
 
-/// A colour as a common dark terminal theme shows it.
+/// A color as a common dark terminal theme shows it.
 fn hex(color: Color, default: &str) -> String {
     let named = match color {
         Color::Reset => return default.to_string(),

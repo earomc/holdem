@@ -1,4 +1,4 @@
-//! Colours, frames and the key reminders shared by every screen.
+//! Colors, frames and the key reminders shared by every screen.
 
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};

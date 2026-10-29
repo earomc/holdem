@@ -1,4 +1,4 @@
-//! The window for choosing your symbol: every shape and colour at once.
+//! The window for choosing your symbol: every shape and color at once.
 //! Shapes not unlocked yet are hidden behind a block.
 
 use ratatui::Frame;
@@ -76,7 +76,7 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
     let mut lines = vec![Line::from(""), Line::from(Span::styled(" Shape", bold()))];
     lines.extend(shape_rows(app, &p));
     lines.push(Line::from(""));
-    lines.push(Line::from(Span::styled(" Colour", bold())));
+    lines.push(Line::from(Span::styled(" Color", bold())));
     lines.push(color_row(app, &p));
     lines.push(Line::from(""));
     lines.push(Line::from(vec![

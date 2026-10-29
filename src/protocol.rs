@@ -72,7 +72,7 @@ pub enum ClientMsg {
     Ready,
     /// Answer to a rebuy offer: true buys back in, false gives up.
     Rebuy(bool),
-    /// Pause the game (only honoured for the table owner while no other people are playing).
+    /// Pause the game (only honored for the table owner while no other people are playing).
     Pause(bool),
     /// Milliseconds between bot moves (table owner only).
     SetSpeed(u32),

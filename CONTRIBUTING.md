@@ -36,7 +36,7 @@ cargo test --release -- --ignored           # also check all 133,784,560 seven-c
 The reference values for each style are measured, not guessed. `cargo run --release --example
 calibrate` lets the bots play about 110,000 hands and prints them. A test checks that every
 style is recognized from its own play: on samples of 200 hands, the right style comes first
-83% of the time and is among the top two 98% of the time. Neighbours such as Rock and Nit are
+83% of the time and is among the top two 98% of the time. Neighbors such as Rock and Nit are
 genuinely similar.
 
 ## Before you send a change

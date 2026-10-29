@@ -1,4 +1,4 @@
-//! The symbol picker: a window with every shape and colour at once, opened
+//! The symbol picker: a window with every shape and color at once, opened
 //! from the *Your symbol* row of the setup and join screens.
 
 use ratatui::crossterm::event::KeyCode;
@@ -17,7 +17,7 @@ pub const COLUMNS: usize = 10;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Picker {
     /// The cell under the cursor: the shapes first (by index into `GLYPHS`),
-    /// then the colours.
+    /// then the colors.
     pub cursor: usize,
     /// The symbol as it would be taken now.
     pub preview: Symbol,
@@ -34,12 +34,12 @@ impl Picker {
         (self.cursor < GLYPHS.len()).then_some(self.cursor as u8)
     }
 
-    /// The colour under the cursor, if it is on the colour row.
+    /// The color under the cursor, if it is on the color row.
     pub fn color(&self) -> Option<u8> {
         self.cursor.checked_sub(GLYPHS.len()).map(|c| c as u8)
     }
 
-    /// The cursor as (row, column); the colours are the row after the shapes.
+    /// The cursor as (row, column); the colors are the row after the shapes.
     fn place(&self) -> (usize, usize) {
         match self.color() {
             Some(c) => (shape_rows(), usize::from(c)),
@@ -108,14 +108,7 @@ impl App {
             Some(Cmd::Right) => (0, 1),
             Some(Cmd::Up) => (-1, 0),
             Some(Cmd::Down) => (1, 0),
-            Some(Cmd::Select) => {
-                if self.picker_locked_note().is_none() {
-                    self.symbol = Some(p.preview);
-                    self.picker = None;
-                    self.sound.play(Cue::Tick, 0);
-                }
-                return;
-            }
+            Some(Cmd::Select) => return self.picker_select(p),
             Some(Cmd::Close) => {
                 self.picker = None;
                 return;
@@ -123,15 +116,31 @@ impl App {
             _ => return,
         };
         p.step(moved.0, moved.1);
-        if let Some(shape) = p.shape()
-            && self.available_glyphs().contains(&shape)
-        {
-            p.preview.glyph = shape;
-        }
+        // Only the color previews as the cursor moves; a shape is picked with Enter.
         if let Some(color) = p.color() {
             p.preview.color = color;
         }
         self.picker = Some(p);
         self.sound.play(Cue::Tick, 0);
+    }
+
+    /// Enter: on a shape, picks it and goes on to the colors; on a color,
+    /// takes the symbol and closes the window. A locked shape is refused.
+    fn picker_select(&mut self, mut p: Picker) {
+        if self.picker_locked_note().is_some() {
+            self.sound.play(Cue::Deny, 0);
+            return;
+        }
+        if let Some(shape) = p.shape() {
+            p.preview.glyph = shape;
+            p.cursor = GLYPHS.len() + usize::from(p.preview.color);
+            self.picker = Some(p);
+            self.sound.play(Cue::Tick, 0);
+        } else if let Some(color) = p.color() {
+            p.preview.color = color;
+            self.symbol = Some(p.preview);
+            self.picker = None;
+            self.sound.play(Cue::Tick, 0);
+        }
     }
 }

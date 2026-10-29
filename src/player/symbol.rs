@@ -1,8 +1,8 @@
-//! Player symbols: a shape and a colour shown before every name, so that
+//! Player symbols: a shape and a color shown before every name, so that
 //! players are easy to tell apart. People may choose theirs; everyone else
 //! (bots, and people who did not choose) gets the one their name gives.
 //!
-//! This is the plain data; the terminal colours are the UI's business.
+//! This is the plain data; the terminal colors are the UI's business.
 
 use std::fmt;
 
@@ -19,7 +19,7 @@ pub const GLYPHS: [&str; 20] = [
 /// How many of [`GLYPHS`] everyone may use.
 pub const BASE_GLYPHS: usize = 12;
 
-/// The colours, by name; they stand out from each other and from the grey of
+/// The colors, by name; they stand out from each other and from the gray of
 /// the seat borders.
 pub const COLORS: [&str; 8] = [
     "red",
@@ -32,7 +32,7 @@ pub const COLORS: [&str; 8] = [
     "light blue",
 ];
 
-/// A shape and a colour, as indices into [`GLYPHS`] and [`COLORS`].
+/// A shape and a color, as indices into [`GLYPHS`] and [`COLORS`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Symbol {
     pub glyph: u8,
@@ -63,7 +63,7 @@ impl Symbol {
         GLYPHS[usize::from(self.glyph) % GLYPHS.len()]
     }
 
-    /// Its colour's name ("cyan").
+    /// Its color's name ("cyan").
     pub fn color_name(self) -> &'static str {
         COLORS[usize::from(self.color) % COLORS.len()]
     }
@@ -73,7 +73,7 @@ impl Symbol {
         usize::from(self.glyph) < BASE_GLYPHS
     }
 
-    /// Reads "★ cyan": a shape from [`GLYPHS`], a space, a colour from [`COLORS`].
+    /// Reads "★ cyan": a shape from [`GLYPHS`], a space, a color from [`COLORS`].
     pub fn parse(text: &str) -> Option<Symbol> {
         let text = text.trim();
         let (glyph, color) = text.split_once(' ')?;

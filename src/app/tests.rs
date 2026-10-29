@@ -390,34 +390,47 @@ fn you_choose_your_symbol_in_a_window() {
     assert_eq!(app.screen, Screen::Setup);
     let p = app.picker.expect("the picker is open");
     assert_eq!(p.cursor, usize::from(named.glyph));
-    picker_to(&mut app, 2);
-    assert_eq!(app.picker.unwrap().preview.glyph, 2);
+    // Moving does not change the shape; Enter picks it and goes on to the colors.
+    picker_to(&mut app, 0);
+    assert_eq!(app.picker.unwrap().preview.glyph, named.glyph);
     press(&mut app, KeyCode::Enter);
-    assert!(app.picker.is_none());
-    assert_eq!(app.symbol.map(|s| s.glyph), Some(2));
+    let p = app.picker.expect("still open: the color comes next");
+    assert_eq!(p.preview.glyph, 0);
+    assert_eq!(p.color(), Some(named.color), "on your color");
+    // Up into the shapes (past the flag) and back down keeps the circle.
+    press(&mut app, KeyCode::Up);
+    press(&mut app, KeyCode::Down);
+    press(&mut app, KeyCode::Right);
+    let p = app.picker.unwrap();
+    assert_eq!(p.preview.glyph, 0, "still the circle");
+    let color = p.color().unwrap();
+    assert_eq!(
+        p.preview.color, color,
+        "the color previews under the cursor"
+    );
+    press(&mut app, KeyCode::Enter);
+    assert!(app.picker.is_none(), "a color takes the symbol");
+    assert_eq!(app.symbol.map(|s| (s.glyph, s.color)), Some((0, color)));
 
-    // A locked shape cannot be taken; the window names what unlocks it.
+    // A locked shape cannot be picked; the window names what unlocks it.
     press(&mut app, KeyCode::Right);
     picker_to(&mut app, 12);
     assert_eq!(app.picker.unwrap().cursor, 12);
-    assert_eq!(
-        app.picker.unwrap().preview.glyph,
-        11,
-        "the last open shape passed"
-    );
     assert_eq!(
         app.picker_locked_note().as_deref(),
         Some("Locked: Royal Flush unlocks this shape")
     );
     press(&mut app, KeyCode::Enter);
-    assert!(app.picker.is_some(), "still open");
+    let p = app.picker.expect("still open");
+    assert_eq!(p.cursor, 12, "refused: the cursor stays");
+    assert_eq!(p.preview.glyph, 0);
 
-    // Below the shapes, the colours.
+    // Down to the colors, then Enter.
     press(&mut app, KeyCode::Down);
     assert_eq!(app.picker.unwrap().color(), Some(2));
     press(&mut app, KeyCode::Enter);
     let chosen = app.symbol.unwrap();
-    assert_eq!((chosen.glyph, chosen.color), (11, 2));
+    assert_eq!((chosen.glyph, chosen.color), (0, 2));
     assert_eq!(app.settings_as_config().client.symbol, chosen.to_string());
 
     // Esc keeps what you had.
@@ -464,7 +477,8 @@ fn achievements_unlock_shapes_and_are_announced() {
     app.open_picker();
     picker_to(&mut app, crown);
     assert_eq!(app.picker_locked_note(), None);
-    app.on_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    app.on_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)); // the shape
+    app.on_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)); // the color
     assert_eq!(app.symbol.map(|s| s.glyph), Some(crown as u8));
 
     app.announce(&Progress::default());

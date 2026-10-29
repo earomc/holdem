@@ -1,4 +1,4 @@
-//! The style estimate recognises each bot archetype from its own play.
+//! The style estimate recognizes each bot archetype from its own play.
 
 use holdem::bot::{self, ARCHETYPES};
 use holdem::card::Rng;
@@ -73,7 +73,7 @@ fn samples(games: u64, chunk: u32) -> Vec<(&'static str, Stats)> {
 }
 
 #[test]
-fn styles_are_recognised_from_a_few_hundred_hands() {
+fn styles_are_recognized_from_a_few_hundred_hands() {
     let data = samples(12, 200);
     let mut right = 0;
     let mut top_two = 0;
@@ -89,8 +89,8 @@ fn styles_are_recognised_from_a_few_hundred_hands() {
     let n = data.len();
     assert!(n >= 40, "only {n} samples");
     println!("{n} samples: {right} first, {top_two} in the top two");
-    // Neighbouring styles (Rock/Nit, Loose-aggressive/Gambler) are genuinely similar,
+    // Neighboring styles (Rock/Nit, Loose-aggressive/Gambler) are genuinely similar,
     // so the right style must be first most of the time and nearly always in the top two.
-    assert!(right * 100 >= n * 60, "{right} of {n} samples recognised");
+    assert!(right * 100 >= n * 60, "{right} of {n} samples recognized");
     assert!(top_two * 100 >= n * 85, "{top_two} of {n} in the top two");
 }

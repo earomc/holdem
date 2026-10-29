@@ -101,7 +101,7 @@ impl App {
             if keys::command(Place::Join, code) == Some(Cmd::Back) {
                 // The attempt finishes in the background; its result is ignored.
                 self.connecting = None;
-                self.join.status = "Cancelled.".to_string();
+                self.join.status = "Canceled.".to_string();
             }
             return;
         }

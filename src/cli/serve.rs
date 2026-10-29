@@ -24,7 +24,7 @@ struct ServedTable {
     speed: String,
 }
 
-/// Everything a dedicated server runs with, as labelled lines. With several
+/// Everything a dedicated server runs with, as labeled lines. With several
 /// tables, what differs between them is listed per table and the rest once.
 fn server_report(
     tables: &[ServedTable],

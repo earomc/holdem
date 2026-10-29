@@ -5,7 +5,7 @@ use ratatui::text::Span;
 
 use holdem::player::symbol::Symbol;
 
-/// The terminal colours, in the order of [`holdem::player::symbol::COLORS`].
+/// The terminal colors, in the order of [`holdem::player::symbol::COLORS`].
 const COLORS: [Color; 8] = [
     Color::Red,
     Color::Green,

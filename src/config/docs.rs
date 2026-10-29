@@ -12,9 +12,9 @@ pub(super) const DOCS: &[(&str, &str)] = &[
     ),
     (
         "client.symbol",
-        "Your symbol before your name: a shape and a colour, like \"★ cyan\". Empty means\n\
+        "Your symbol before your name: a shape and a color, like \"★ cyan\". Empty means\n\
          the one your name gives. Shapes: ● ▲ ◆ ■ ★ ♪ ✚ ◉ ✿ ☾ ⚑ ▼, and more that\n\
-         achievements unlock. Colours: red, green, yellow, blue, magenta, cyan,\n\
+         achievements unlock. Colors: red, green, yellow, blue, magenta, cyan,\n\
          light red, light blue.",
     ),
     (

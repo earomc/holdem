@@ -60,7 +60,7 @@ pub(super) fn page(facts: &Facts) -> Page {
             ),
             P(
                 "Borders",
-                "yellow: whose turn it is; green: won the last hand; grey: folded \
+                "yellow: whose turn it is; green: won the last hand; gray: folded \
                       or out",
             ),
             P(
@@ -90,7 +90,7 @@ pub(super) fn page(facts: &Facts) -> Page {
            Only hands you start with at least {} big blinds count: with fewer, everybody \
            must play push-or-fold. It compares your numbers with what each bot style \
            really does (measured over thousands of bot hands) and names the closest: a \
-           rough guess after {} such hands, a reliable estimate after {}. Neighbouring \
+           rough guess after {} such hands, a reliable estimate after {}. Neighboring \
            styles are similar, so look at the top two. Your counts are also added up over \
            all your games (in stats.toml, next to holdem.toml), and the Your style tab of \
            game info (key {log}) shows that estimate too.",

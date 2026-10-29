@@ -1,5 +1,5 @@
 # Checks every push and pull request: formatting, lints, tests on all three
-# platforms, the minimum Rust version, and the dependencies' licences and
+# platforms, the minimum Rust version, and the dependencies' licenses and
 # security advisories. Releases are built by release.yml (cargo-dist).
 name: CI
 

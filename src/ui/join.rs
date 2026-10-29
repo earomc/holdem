@@ -23,7 +23,7 @@ fn input_line(label: &str, value: &str, active: bool) -> Line<'static> {
     ])
 }
 
-/// Your symbol, in its colour, with its colour's name.
+/// Your symbol, in its color, with its color's name.
 fn symbol_line(app: &App, active: bool) -> Line<'static> {
     let s = app.shown_symbol();
     let style = if active { yellow() } else { Style::new() };

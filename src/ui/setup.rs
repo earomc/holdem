@@ -203,7 +203,7 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
             Style::new()
         };
         if *row == SetupRow::Symbol {
-            // The symbol in its own colour, then the colour's name.
+            // The symbol in its own color, then the color's name.
             let s = app.shown_symbol();
             let (before, after) = if i == selected {
                 (format!(" ▶ {label:<21}◀ "), " ▶")
