@@ -255,7 +255,6 @@ mod tests {
             calls: 0,
             postflop_bets: 4,
             bluffs: 4,
-            ..Stats::default()
         };
         let p = profile(&wild, MIN_HANDS).unwrap();
         assert!(p.ranking[0].1 >= 20, "{:?}", p.ranking);

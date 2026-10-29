@@ -17,7 +17,7 @@ use super::over::{rough_note, style_line};
 use super::style::{bold, centered, cyan, dim, key_for, reminder, reminder_spans, yellow};
 use super::text::{fit, text_width, wrap_text};
 use super::{boxed, fitted};
-use crate::app::{App, InfoTab, LeaveChoice, RaisePrompt, SettingsRow, pot_raise_to};
+use crate::app::{App, InfoTab, MenuChoice, RaisePrompt, SettingsRow, pot_raise_to};
 use crate::help::{self, Item};
 use crate::keys::{self, Cmd, Place};
 use crate::session::Kind;
@@ -29,10 +29,39 @@ pub(super) fn window(title: String, color: Color) -> Block<'static> {
         .title(title)
 }
 
-// ------------------------------------------------------------------ leave
+// ------------------------------------------------------------------ menu
 
-pub(super) fn leave(frame: &mut Frame, app: &App, selected: usize, area: Rect) {
+/// The menu Esc opens during a game: the windows, and leaving.
+pub(super) fn game_menu(frame: &mut Frame, app: &App, selected: usize, area: Rect) {
+    let items = app.game_menu_items();
+    let selected = selected.min(items.len().saturating_sub(1));
+    let shortcut = |c: MenuChoice| match c {
+        MenuChoice::GameInfo => key_for(Place::Table, Cmd::Log),
+        MenuChoice::Settings => key_for(Place::Table, Cmd::Settings),
+        MenuChoice::Help => key_for(Place::Table, Cmd::Help),
+        MenuChoice::MainMenu | MenuChoice::Quit => String::new(),
+    };
+    let mut lines = vec![Line::from("")];
+    for (i, item) in items.iter().enumerate() {
+        let style = if i == selected {
+            yellow()
+        } else {
+            Style::new()
+        };
+        let marker = if i == selected { " ▶ " } else { "   " };
+        lines.push(Line::from(vec![
+            Span::styled(format!("{marker}{:<24}", item.label()), style),
+            Span::styled(shortcut(*item), dim()),
+        ]));
+    }
+    lines.push(Line::from(""));
+    // What leaving means, while a way out is highlighted.
+    let leaving = matches!(
+        items.get(selected),
+        Some(MenuChoice::MainMenu | MenuChoice::Quit)
+    );
     let warning = match app.session.as_ref() {
+        _ if !leaving => "",
         Some(s) if s.kind == Kind::Host => {
             "You are hosting: everyone at your table will be disconnected."
         }
@@ -40,26 +69,15 @@ pub(super) fn leave(frame: &mut Frame, app: &App, selected: usize, area: Rect) {
         Some(_) => "This game ends.",
         None => "",
     };
-    let mut lines = vec![Line::from(Span::styled(format!(" {warning}"), dim()))];
-    lines.push(Line::from(""));
-    for (i, option) in LeaveChoice::ALL.iter().enumerate() {
-        let style = if i == selected {
-            yellow()
-        } else {
-            Style::new()
-        };
-        let marker = if i == selected { " ▶ " } else { "   " };
-        lines.push(Line::from(Span::styled(
-            format!("{}{}", marker, option.label()),
-            style,
-        )));
-    }
-    lines.push(Line::from(""));
-    lines.push(Line::from(reminder(&[], Place::LeaveWindow)));
-    let (rect, lines) = fitted(area, 60, lines);
+    lines.push(Line::from(Span::styled(
+        format!(" {warning}"),
+        Style::new().fg(Color::LightRed),
+    )));
+    lines.push(Line::from(reminder(&[], Place::GameMenu)));
+    let (rect, lines) = fitted(area, 48, lines);
     frame.render_widget(Clear, rect);
     frame.render_widget(
-        boxed(lines, window(" Leave? ".to_string(), Color::Red), rect),
+        boxed(lines, window(" Menu ".to_string(), Color::Cyan), rect),
         rect,
     );
 }
@@ -191,6 +209,97 @@ fn bar(share: f32, width: usize) -> String {
 }
 
 /// The Your style tab: this game's numbers, and the estimate over all games.
+/// "All games (3 games, 140 counted hands): Shark (41% match): …", with this
+/// game's counts in until they are saved.
+fn all_games_text(app: &App, stats: &stats::Stats, min_hands: u32) -> String {
+    if app.stats_file.is_none() {
+        return "All games: not kept (there is no settings folder to keep them in).".to_string();
+    }
+    let saved = app.saved_stats();
+    let mut all = saved.stats;
+    let mut games = saved.games;
+    let saved_already = app.session.as_ref().is_some_and(|s| s.stats_saved);
+    if !saved_already && stats.hands > 0 {
+        all.add(stats);
+        games += 1;
+    }
+    format!(
+        "All games ({games} game{}, {} counted hands): {}",
+        if games == 1 { "" } else { "s" },
+        all.hands,
+        style_line(&all, min_hands)
+    )
+}
+
+/// Your style for the narrow panel beside the table: the closest styles and
+/// the four numbers, without bars.
+pub(super) fn style_panel_lines(app: &App, width: usize) -> Vec<Line<'static>> {
+    let stats = app
+        .session
+        .as_ref()
+        .map(|s| s.game_stats)
+        .unwrap_or_default();
+    let min_hands = app.help_facts().style_min_hands;
+    let mut lines = vec![Line::from(format!(
+        "This game: {} counted hands",
+        stats.hands
+    ))];
+    let wrap = |text: &str, style: Style, lines: &mut Vec<Line<'static>>| {
+        for l in wrap_text(text, width, 2) {
+            lines.push(Line::from(Span::styled(l, style)));
+        }
+    };
+    match stats::profile(&stats, min_hands) {
+        None => wrap(
+            &format!(
+                "A first guess after {} counted hands.",
+                stats::ROUGH_HANDS.min(min_hands)
+            ),
+            dim(),
+            &mut lines,
+        ),
+        Some(p) => {
+            lines.push(Line::from(""));
+            for (name, share) in p.ranking.iter().take(3) {
+                lines.push(Line::from(vec![
+                    Span::styled(format!("{share:>3}% "), yellow()),
+                    Span::raw(name.to_string()),
+                ]));
+            }
+            lines.push(Line::from(""));
+            let x = p.features;
+            let numbers = [
+                ("Hands played", x.vpip),
+                ("Raised first", x.pfr),
+                ("Aggression", x.aggression),
+                ("Bluffing", x.bluff),
+            ];
+            for ((label, value), known) in numbers.iter().zip(p.known) {
+                let shown = if known {
+                    format!("{:>3.0}%", value * 100.0)
+                } else {
+                    "  –".to_string()
+                };
+                lines.push(Line::from(vec![
+                    Span::raw(format!("{label:<13}")),
+                    Span::styled(shown, cyan()),
+                ]));
+            }
+            if p.rough {
+                lines.push(Line::from(""));
+                wrap(&rough_note(stats.hands, min_hands), dim(), &mut lines);
+            }
+        }
+    }
+    lines.push(Line::from(""));
+    wrap(
+        &all_games_text(app, &stats, min_hands),
+        Style::new().fg(Color::Cyan),
+        &mut lines,
+    );
+    lines
+}
+
 fn style_lines(app: &App, width: usize) -> Vec<Line<'static>> {
     let stats = app
         .session
@@ -290,25 +399,7 @@ fn style_lines(app: &App, width: usize) -> Vec<Line<'static>> {
         }
     }
     lines.push(Line::from(""));
-    let all_games = match app.stats_file {
-        Some(_) => {
-            let saved = app.saved_stats();
-            let mut all = saved.stats;
-            let mut games = saved.games;
-            let saved_already = app.session.as_ref().is_some_and(|s| s.stats_saved);
-            if !saved_already && stats.hands > 0 {
-                all.add(&stats);
-                games += 1;
-            }
-            format!(
-                " All games ({games} game{}, {} counted hands): {}",
-                if games == 1 { "" } else { "s" },
-                all.hands,
-                style_line(&all, min_hands)
-            )
-        }
-        None => " All games: not kept (there is no settings folder to keep them in).".to_string(),
-    };
+    let all_games = format!(" {}", all_games_text(app, &stats, min_hands));
     for l in wrap_text(&all_games, width.saturating_sub(1), 3) {
         lines.push(Line::from(Span::styled(l, Style::new().fg(Color::Cyan))));
     }

@@ -98,12 +98,12 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
     let need_h = HEADER_H + rows as u16 * SEAT_H + MIDDLE_MIN_H + YOU_H + FOOTER_H;
     if area.width < MIN_WIDTH || area.height < need_h {
         let msg = format!(
-            "Terminal too small: this table needs at least {}x{} (now {}x{}). Enlarge the window, or press {} to leave.",
+            "Terminal too small: this table needs at least {}x{} (now {}x{}). Enlarge the window, or press {} for the menu to leave.",
             MIN_WIDTH,
             need_h,
             area.width,
             area.height,
-            key_for(Place::Table, Cmd::Leave)
+            key_for(Place::Table, Cmd::Menu)
         );
         let rect = centered(area, area.width.min(60), 6);
         frame.render_widget(
@@ -161,12 +161,19 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
         let inner_h = log_area.height.saturating_sub(2) as usize;
         let inner_w = log_area.width.saturating_sub(2) as usize;
         // The log tab you looked at last in the game info window.
-        let (lines, title) = if app.side_tab == InfoTab::YourHands {
-            let (lines, _) = hands_view(&session.my_hands, inner_h, inner_w, 0);
-            (lines, " Your hands (L: game info) ")
-        } else {
-            let (lines, _) = log_view(&session.log, inner_h, inner_w, 0);
-            (lines, " Log (L: game info) ")
+        let (lines, title) = match app.side_tab {
+            InfoTab::YourHands => {
+                let (lines, _) = hands_view(&session.my_hands, inner_h, inner_w, 0);
+                (lines, " Your hands (L: game info) ")
+            }
+            InfoTab::Style => (
+                popups::style_panel_lines(app, inner_w),
+                " Your style (L: game info) ",
+            ),
+            InfoTab::TableLog => {
+                let (lines, _) = log_view(&session.log, inner_h, inner_w, 0);
+                (lines, " Log (L: game info) ")
+            }
         };
         let block = framed(Line::from(title), Color::DarkGray);
         frame.render_widget(boxed(lines, block, log_area), log_area);

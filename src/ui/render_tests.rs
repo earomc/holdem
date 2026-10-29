@@ -32,7 +32,8 @@ fn draw_everything(app: &mut App) {
                 _ => None,
             };
             app.show_settings = overlay == 5;
-            app.leave = (overlay == 6).then_some(1);
+            // The menu, on a way out so that its warning shows too.
+            app.game_menu = (overlay == 6).then_some(3);
             // The symbol picker, on a locked shape.
             app.picker = (overlay == 8).then(|| crate::app::Picker {
                 cursor: 12,
@@ -60,7 +61,7 @@ fn draw_everything(app: &mut App) {
     app.show_help = false;
     app.info = None;
     app.show_settings = false;
-    app.leave = None;
+    app.game_menu = None;
     app.picker = None;
     app.side_tab = InfoTab::TableLog;
 }
@@ -348,13 +349,29 @@ fn the_game_info_window_switches_tabs_and_the_side_panel_follows() {
     assert!(wide(&app).contains("Hands counted this game"));
     press(&mut app, KeyCode::Esc);
     assert_eq!(app.info, None);
-    // The panel keeps the last log tab looked at, and L opens the last tab.
-    assert!(wide(&app).contains("Your hands (L: game info)"));
+    // The panel shows the tab looked at last, the style too, and L opens it.
+    let panel = wide(&app);
+    assert!(panel.contains("Your style (L: game info)"), "{panel}");
+    assert!(panel.contains("counted hands"), "{panel}");
     press(&mut app, KeyCode::Char('l'));
     assert_eq!(app.info, Some(InfoTab::Style));
     press(&mut app, KeyCode::Esc);
+    // P is gone: the style is a tab of game info.
     press(&mut app, KeyCode::Char('p'));
-    assert_eq!(app.info, Some(InfoTab::Style));
+    assert_eq!(app.info, None);
+    // Esc at the table opens the menu, and its first item is game info.
+    press(&mut app, KeyCode::Esc);
+    assert_eq!(app.game_menu, Some(0));
+    assert!(wide(&app).contains("Back to the main menu"));
+    press(&mut app, KeyCode::Enter);
+    assert_eq!(app.game_menu, None);
+    assert_eq!(app.info, Some(InfoTab::Style), "game info, on its last tab");
+    press(&mut app, KeyCode::Esc);
+    // Esc closes the menu again: no "keep playing" needed.
+    press(&mut app, KeyCode::Esc);
+    press(&mut app, KeyCode::Esc);
+    assert_eq!(app.game_menu, None);
+    assert_eq!(app.screen, Screen::Table);
 }
 
 #[test]
@@ -434,7 +451,11 @@ fn a_hosted_game_renders_the_lobby_and_the_table() {
     assert!(v.hand_no >= 3 || v.game_over);
     // Leaving through the dialog goes back to the menu and closes the table.
     press(&mut app, KeyCode::Char('q'));
-    assert_eq!(app.leave, Some(0));
+    assert_eq!(app.game_menu, Some(0));
+    assert_eq!(app.game_menu_items()[3], crate::app::MenuChoice::MainMenu);
+    for _ in 0..3 {
+        press(&mut app, KeyCode::Down);
+    }
     press(&mut app, KeyCode::Enter);
     assert_eq!(app.screen, Screen::Menu);
 }

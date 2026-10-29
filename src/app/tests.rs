@@ -486,3 +486,15 @@ fn achievements_unlock_shapes_and_are_announced() {
     assert_eq!(notice, "Achievements: Winner I, Royal Flush");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn the_menu_offers_game_info_only_during_a_game() {
+    let app = App::new(Config::default(), Some(1), Sound::new(true));
+    let items = app.game_menu_items();
+    assert!(
+        !items.contains(&MenuChoice::GameInfo),
+        "nothing to show yet"
+    );
+    assert_eq!(items.first(), Some(&MenuChoice::Settings));
+    assert!(items.contains(&MenuChoice::MainMenu) && items.contains(&MenuChoice::Quit));
+}

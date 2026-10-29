@@ -75,11 +75,13 @@ choices!(
 );
 
 choices!(
-    /// The leave window.
-    LeaveChoice {
+    /// The menu Esc opens during a game.
+    MenuChoice {
+        GameInfo => "Game info",
+        Settings => "Settings",
+        Help => "Help",
         MainMenu => "Back to the main menu",
-        Quit => "Quit the application",
-        Stay => "Keep playing",
+        Quit => "Quit holdem",
     }
 );
 
@@ -271,7 +273,7 @@ pub struct App {
     pub info: Option<InfoTab>,
     /// The tab the game info window opens on: the one looked at last.
     pub info_tab: InfoTab,
-    /// What the panel beside the table shows: the log tab looked at last.
+    /// What the panel beside the table shows: the tab looked at last.
     pub side_tab: InfoTab,
     /// Lines scrolled up from the newest entry, in the log tabs.
     pub log_scroll: usize,
@@ -288,8 +290,9 @@ pub struct App {
     /// Lines scrolled down the achievements screen.
     pub achievements_scroll: usize,
     pub achievements_max: Cell<usize>,
-    /// The leave window, with the highlighted choice (index into `LeaveChoice::ALL`).
-    pub leave: Option<usize>,
+    /// The menu Esc opens, with the highlighted item (an index into
+    /// [`App::game_menu_items`]).
+    pub game_menu: Option<usize>,
 
     /// The first press of A arms the all-in; a second press pushes.
     pub all_in_armed: bool,
@@ -423,7 +426,7 @@ impl App {
             saved_stats: RefCell::new(None),
             show_settings: false,
             settings_row: 0,
-            leave: None,
+            game_menu: None,
             picker: None,
             achievements_scroll: 0,
             achievements_max: Cell::new(0),
@@ -528,7 +531,17 @@ impl App {
             || self.info.is_some()
             || self.show_settings
             || self.picker.is_some()
-            || self.leave.is_some()
+            || self.game_menu.is_some()
+    }
+
+    /// The items of the menu Esc opens: game info only once a game is on.
+    pub fn game_menu_items(&self) -> Vec<MenuChoice> {
+        let in_game = self.view().is_some();
+        MenuChoice::ALL
+            .iter()
+            .copied()
+            .filter(|c| in_game || *c != MenuChoice::GameInfo)
+            .collect()
     }
 
     /// Your symbol as others will see it: the chosen one, or your name's.

@@ -7,7 +7,6 @@ use crate::keys::{self, Cmd, Place};
 
 pub(super) fn page(facts: &Facts) -> Page {
     let settings = keys::key(Place::Table, Cmd::Settings);
-    let profile = keys::key(Place::Table, Cmd::Profile);
     let log = keys::key(Place::Table, Cmd::Log);
     let mut styles = vec![
         H("YOUR OPPONENTS"),
@@ -82,7 +81,7 @@ pub(super) fn page(facts: &Facts) -> Page {
              your win chance is above the pot odds."
                 ),
             ),
-            H(format!("YOUR STYLE (KEY {profile})")),
+            H(format!("YOUR STYLE (GAME INFO, KEY {log})")),
             T(format!(
                 "The game counts how often you play a hand (put chips in voluntarily before \
            the flop), how often you raise first, how often you bet or raise rather than \

@@ -48,20 +48,23 @@ Every key is also listed on the first page of the in-game help (`?`).
 | Main menu | `↑` `↓` choose, `Enter` select, `?`/`H`/`F1` help, `Q`/`Esc` quit |
 | Setup | `↑` `↓` choose, `←` `→` change, type on the *Your name* row, `Enter` or `←` `→` on *Your symbol* opens the window to choose it, `W` save as your defaults, `Enter` deal / open the table, `Esc`/`Q` back (on the name row, letters are typed: use `Esc`, and `F1` for help) |
 | Join screen | `↑` `↓`/`Tab` move between name, symbol, address and found tables, type to edit, `Enter` or `←` `→` on your symbol opens the window to choose it, `Enter` join, `Esc` back or cancel, `F1` help |
-| Lobby | `Enter` ready / not ready, `S` settings, `?`/`H` help, `Q`/`Esc` leave |
+| Lobby | `Enter` ready / not ready, `S` settings, `?`/`H` help, `Esc`/`Q` menu |
 | Your turn | `F` fold, `C` check/call, `R`/`B` raise box, `A` all-in (press twice) |
-| At the table | `Enter`/`N` next hand (ready), `Y` rebuy when offered, `L` game info, `P` your style, `S` settings (speed, volume, win-chance hint; `W` saves them), `?`/`H` help, `Q`/`Esc` leave |
+| At the table | `Enter`/`N` next hand (ready), `Y` rebuy when offered, `L` game info, `S` settings (speed, volume, win-chance hint; `W` saves them), `?`/`H` help, `Esc`/`Q` menu |
 | Raise box | digits and `Backspace` type the total, `M` min, `H` half pot, `P` pot, `A` all-in, `↑` `↓` ± one big blind, `Enter` confirm, `Esc` cancel |
-| Final standings | `Enter` main menu (solo) or play again (network), `P` your style, `L` game info, `?`/`H` help, `Q`/`Esc` leave |
-| Game info | `←` `→`/`Tab` switch tabs, `↑` `↓` `PgUp` `PgDn` `Home` `End` scroll, `P` your style, `Esc`/`Enter`/`L` close |
+| Final standings | `Enter` main menu (solo) or play again (network), `L` game info, `?`/`H` help, `Esc`/`Q` menu |
+| Game info | `←` `→`/`Tab` switch tabs, `↑` `↓` `PgUp` `PgDn` `Home` `End` scroll, `Esc`/`Enter`/`L` close |
+| Menu | `↑` `↓` choose, `Enter` open or do it, `Esc`/`Q` back to the game |
 | Anywhere | `Ctrl-C` quits immediately |
 
-Leaving offers *back to the main menu*, *quit* or *keep playing*. In a solo game, the game pauses
-while any window (help, game info, settings, leave) is open.
+`Esc` (or `Q`) during a game opens the **menu**: *game info*, *settings*, *help*, *back to the
+main menu* and *quit holdem*, with the shortcuts of the first three beside them; `Esc` closes it
+again. In a solo game, the game pauses while any window (the menu, help, game info, settings)
+is open.
 
 **Game info** (`L`) has three tabs: the *table log*, *your hands* (each hand you were dealt:
 the chips it won or cost, your cards, and how it ended, including bluffs) and *your style*. On
-a wide terminal the panel beside the table shows the log tab you looked at last.
+a wide terminal the panel beside the table shows the tab you looked at last.
 
 ## Your symbol
 
@@ -104,7 +107,7 @@ statistics under your name in `stats.toml`.
 
 ## Your playing style
 
-Press **P** at the table (the *Your style* tab of game info), or look at the final standings.
+See the *Your style* tab of game info (`L`), or look at the final standings.
 The game counts four standard statistics:
 - how often you play a hand (voluntarily put chips in before the flop);
 - how often you raise first;

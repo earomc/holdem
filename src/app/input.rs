@@ -5,7 +5,7 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use holdem::protocol::ClientMsg;
 
-use super::{App, InfoTab, LeaveChoice, MenuItem, PAGE, Screen, cycle};
+use super::{App, InfoTab, MenuChoice, MenuItem, PAGE, Screen, cycle};
 use crate::help;
 use crate::keys::{self, Cmd, Place};
 use crate::session::Kind;
@@ -18,8 +18,8 @@ impl App {
             return;
         }
         let code = key.code;
-        if self.leave.is_some() {
-            self.leave_key(code);
+        if self.game_menu.is_some() {
+            self.game_menu_key(code);
         } else if self.picker.is_some() {
             self.picker_key(code);
         } else if self.show_help {
@@ -57,34 +57,34 @@ impl App {
                 self.show_settings = true;
                 self.settings_row = 0;
             }
-            Cmd::Profile => self.show_tab(InfoTab::Style),
-            Cmd::Leave => self.leave = Some(0),
+            Cmd::Menu => self.game_menu = Some(0),
             _ => {}
         }
     }
 
-    fn leave_key(&mut self, code: KeyCode) {
-        let Some(selected) = self.leave else {
+    fn game_menu_key(&mut self, code: KeyCode) {
+        let Some(selected) = self.game_menu else {
             return;
         };
-        let n = LeaveChoice::ALL.len();
-        match keys::command(Place::LeaveWindow, code) {
-            Some(Cmd::Up) => self.leave = Some(cycle(selected, n, -1)),
-            Some(Cmd::Down) => self.leave = Some(cycle(selected, n, 1)),
-            Some(Cmd::Select) => self.choose_leave(LeaveChoice::ALL[selected]),
-            Some(Cmd::MainMenu) => self.choose_leave(LeaveChoice::MainMenu),
-            Some(Cmd::Quit) => self.choose_leave(LeaveChoice::Quit),
-            Some(Cmd::Stay) => self.choose_leave(LeaveChoice::Stay),
+        let items = self.game_menu_items();
+        let n = items.len();
+        match keys::command(Place::GameMenu, code) {
+            Some(Cmd::Up) => self.game_menu = Some(cycle(selected, n, -1)),
+            Some(Cmd::Down) => self.game_menu = Some(cycle(selected, n, 1)),
+            Some(Cmd::Select) => self.choose_in_menu(items[selected.min(n - 1)]),
+            Some(Cmd::Close) => self.game_menu = None,
             _ => {}
         }
     }
 
-    fn choose_leave(&mut self, choice: LeaveChoice) {
-        self.leave = None;
+    fn choose_in_menu(&mut self, choice: MenuChoice) {
+        self.game_menu = None;
         match choice {
-            LeaveChoice::MainMenu => self.return_to_menu(),
-            LeaveChoice::Quit => self.quit = true,
-            LeaveChoice::Stay => {}
+            MenuChoice::GameInfo => self.common(Cmd::Log),
+            MenuChoice::Settings => self.common(Cmd::Settings),
+            MenuChoice::Help => self.common(Cmd::Help),
+            MenuChoice::MainMenu => self.return_to_menu(),
+            MenuChoice::Quit => self.quit = true,
         }
     }
 
@@ -109,13 +109,12 @@ impl App {
         }
     }
 
-    /// Opens the game info window on `tab`, which the next L opens on too.
+    /// Opens the game info window on `tab`. The next L opens on it too, and
+    /// the panel beside the table shows it.
     pub(super) fn show_tab(&mut self, tab: InfoTab) {
         self.info = Some(tab);
         self.info_tab = tab;
-        if tab != InfoTab::Style {
-            self.side_tab = tab;
-        }
+        self.side_tab = tab;
         self.log_scroll = 0;
     }
 
@@ -132,7 +131,6 @@ impl App {
         match keys::command(Place::InfoWindow, code) {
             Some(Cmd::Right) => self.show_tab(step(1)),
             Some(Cmd::Left) => self.show_tab(step(-1)),
-            Some(Cmd::Profile) => self.show_tab(InfoTab::Style),
             Some(Cmd::Up) => self.log_scroll = (self.log_scroll + 1).min(max),
             Some(Cmd::Down) => self.log_scroll = self.log_scroll.saturating_sub(1),
             Some(Cmd::PageUp) => self.log_scroll = (self.log_scroll + PAGE).min(max),

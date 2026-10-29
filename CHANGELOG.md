@@ -21,6 +21,13 @@ All notable changes to holdem. The format follows
   first, and keeps your settings and statistics unless you choose otherwise (`--purge`
   deletes them, `--yes` does not ask). The README also lists the steps by hand.
 
+### Changed
+- `Esc` (or `Q`) during a game opens one menu with game info, settings, help, back to the main
+  menu and quit holdem; `Esc` closes it again. It replaces the leave window and its "keep
+  playing" choice. The shortcuts `L`, `S` and `?` still work.
+- `P` is gone: your style is the *Your style* tab of game info (`L`). The panel beside the
+  table now shows whichever tab you looked at last, your style included.
+
 ### Fixed
 - The style estimate no longer shows 0% match for every style after a few hands. The
   percentages now share the match out among the styles (adding up to 100%), and a number with

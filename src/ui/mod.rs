@@ -59,8 +59,8 @@ pub fn draw(frame: &mut Frame, app: &App) {
     if app.show_help {
         popups::help(frame, app, area);
     }
-    if let Some(selected) = app.leave {
-        popups::leave(frame, app, selected, area);
+    if let Some(selected) = app.game_menu {
+        popups::game_menu(frame, app, selected, area);
     }
     if let Some(t) = app.toast_text()
         && !matches!(app.screen, Screen::Table)

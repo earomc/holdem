@@ -29,7 +29,8 @@ pub enum Place {
     /// The game info window: the table log, your hands and your style.
     InfoWindow,
     SettingsWindow,
-    LeaveWindow,
+    /// The menu Esc opens during a game.
+    GameMenu,
     /// Keys that work everywhere; handled before anything else.
     Everywhere,
 }
@@ -52,9 +53,9 @@ pub enum Cmd {
     Close,
     Help,
     Log,
-    Profile,
     Settings,
-    Leave,
+    /// The menu Esc opens during a game.
+    Menu,
     Quit,
     Ready,
     Rebuy,
@@ -66,8 +67,6 @@ pub enum Cmd {
     HalfPot,
     Pot,
     MaxRaise,
-    MainMenu,
-    Stay,
 }
 
 /// One line of the Keys help page: one or more bindings and what they do.
@@ -125,10 +124,10 @@ const fn note(
 const UP_DOWN: &[(&[KeyCode], Cmd)] = &[(&[Up], Cmd::Up), (&[Down], Cmd::Down)];
 const LEFT_RIGHT: &[(&[KeyCode], Cmd)] = &[(&[Left], Cmd::Left), (&[Right], Cmd::Right)];
 const OPEN_HELP: Row = row(&[(HELP_KEYS, Cmd::Help)], "open this help", "help");
-const LEAVE: Row = row(
-    &[(&[Char('q'), Esc], Cmd::Leave)],
-    "leave: back to the main menu, quit, or keep playing",
-    "leave",
+const MENU: Row = row(
+    &[(&[Esc, Char('q')], Cmd::Menu)],
+    "the menu: game info, settings, help, back to the main menu, quit",
+    "menu",
 );
 
 /// The sections in the order the help lists them.
@@ -250,7 +249,7 @@ pub const SECTIONS: &[Section] = &[
             ),
             row(&[(&[Char('s')], Cmd::Settings)], "settings", "settings"),
             OPEN_HELP,
-            LEAVE,
+            MENU,
         ],
     },
     Section {
@@ -307,16 +306,11 @@ pub const SECTIONS: &[Section] = &[
                 "game info",
             ),
             row(
-                &[(&[Char('p')], Cmd::Profile)],
-                "your playing style and the bot style it is closest to",
-                "your style",
-            ),
-            row(
                 &[(&[Char('s')], Cmd::Settings)],
                 "settings: game speed, sound volume, win-chance hint (if the table allows it)",
                 "settings",
             ),
-            LEAVE,
+            MENU,
         ],
     },
     Section {
@@ -403,17 +397,12 @@ pub const SECTIONS: &[Section] = &[
                 "",
             ),
             row(
-                &[(&[Char('p')], Cmd::Profile)],
-                "your playing style",
-                "your style",
-            ),
-            row(
                 &[(&[Char('l')], Cmd::Log)],
                 "game info: the table log, your hands and your style",
                 "game info",
             ),
             OPEN_HELP,
-            LEAVE,
+            MENU,
         ],
     },
     Section {
@@ -454,7 +443,6 @@ pub const SECTIONS: &[Section] = &[
                 "jump to the oldest / newest line",
                 "",
             ),
-            row(&[(&[Char('p')], Cmd::Profile)], "your style", ""),
             row(&[(&[Esc, Enter, Char('l')], Cmd::Close)], "close", "close"),
         ],
     },
@@ -473,18 +461,16 @@ pub const SECTIONS: &[Section] = &[
         ],
     },
     Section {
-        place: Place::LeaveWindow,
-        title: "LEAVE WINDOW",
+        place: Place::GameMenu,
+        title: "MENU",
         rows: &[
             row(UP_DOWN, "choose", "choose"),
-            row(&[(&[Enter], Cmd::Select)], "confirm", "confirm"),
+            row(&[(&[Enter], Cmd::Select)], "open or do it", "select"),
             row(
-                &[(&[Char('m')], Cmd::MainMenu)],
-                "back to the main menu",
-                "menu",
+                &[(&[Esc, Char('q')], Cmd::Close)],
+                "close the menu and go back to the game",
+                "back",
             ),
-            row(&[(&[Char('q')], Cmd::Quit)], "quit the application", "quit"),
-            row(&[(&[Esc], Cmd::Stay)], "keep playing", "stay"),
         ],
     },
     Section {
@@ -637,7 +623,7 @@ mod tests {
         &[Place::HelpWindow],
         &[Place::InfoWindow],
         &[Place::SettingsWindow],
-        &[Place::LeaveWindow],
+        &[Place::GameMenu],
     ];
 
     #[test]
@@ -687,7 +673,7 @@ mod tests {
         assert_eq!(label(&section(Place::InfoWindow).rows[3]), "Home / End");
         assert_eq!(
             reminder_text(Place::Table),
-            "? help   L game info   P your style   S settings   Q leave"
+            "? help   L game info   S settings   Esc menu"
         );
     }
 }
