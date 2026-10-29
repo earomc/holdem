@@ -28,11 +28,14 @@ use crate::sound::{Cue, Sound};
 
 mod input;
 mod lifecycle;
+mod picker;
 mod settings;
 mod setup;
 mod table;
 #[cfg(test)]
 mod tests;
+
+pub use picker::{COLUMNS as PICKER_COLUMNS, Picker};
 
 /// Declares a list of choices: an enum, all its values in order, and a label each.
 macro_rules! choices {
@@ -280,6 +283,8 @@ pub struct App {
     pub show_settings: bool,
     /// Index into `SettingsRow::ALL`.
     pub settings_row: usize,
+    /// The symbol picker, while it is open.
+    pub picker: Option<Picker>,
     /// Lines scrolled down the achievements screen.
     pub achievements_scroll: usize,
     pub achievements_max: Cell<usize>,
@@ -419,6 +424,7 @@ impl App {
             show_settings: false,
             settings_row: 0,
             leave: None,
+            picker: None,
             achievements_scroll: 0,
             achievements_max: Cell::new(0),
             all_in_armed: false,
@@ -518,7 +524,11 @@ impl App {
 
     /// True while a window that pauses a solo game is open.
     pub fn overlay_open(&self) -> bool {
-        self.show_help || self.info.is_some() || self.show_settings || self.leave.is_some()
+        self.show_help
+            || self.info.is_some()
+            || self.show_settings
+            || self.picker.is_some()
+            || self.leave.is_some()
     }
 
     /// Your symbol as others will see it: the chosen one, or your name's.
@@ -561,22 +571,6 @@ impl App {
             }
         };
         self.notify(text);
-    }
-
-    /// Steps your symbol's shape through the ones you may use.
-    pub(super) fn step_symbol_shape(&mut self, delta: i32) {
-        let mut s = self.shown_symbol();
-        let shapes = self.available_glyphs();
-        let i = shapes.iter().position(|g| *g == s.glyph).unwrap_or(0);
-        s.glyph = shapes[cycle(i, shapes.len(), delta)];
-        self.symbol = Some(s);
-    }
-
-    /// Your symbol's next colour.
-    pub(super) fn next_symbol_color(&mut self) {
-        let mut s = self.shown_symbol();
-        s.color = ((usize::from(s.color) + 1) % symbol::COLORS.len()) as u8;
-        self.symbol = Some(s);
     }
 
     /// The name your statistics are kept under: the one you chose, not the

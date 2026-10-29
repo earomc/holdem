@@ -7,9 +7,10 @@ All notable changes to holdem. The format follows
 ## [Unreleased]
 
 ### Added
-- Choose your own symbol: a *Your symbol* row on the setup and join screens (`←` `→` the
-  shape, `C` the colour). Everyone at the table sees it, and `W` saves it as `client.symbol`.
-  Without a choice you keep the one your name gives.
+- Choose your own symbol: `Enter` on the *Your symbol* row of the setup or join screen opens
+  a window with every shape and colour; shapes not unlocked yet stay hidden behind `▒`.
+  Everyone at the table sees your symbol, and `W` saves it as `client.symbol`. Without a
+  choice you keep the one your name gives.
 - Achievements: 21 of them, many in stages (Winner I, II, III), from winning hands and games
   to bluffs, big pots, made hands up to a royal flush, comebacks and games with other people.
   *Achievements* in the main menu shows each with its progress; a notice says when you earn

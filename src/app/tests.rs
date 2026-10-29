@@ -355,8 +355,25 @@ fn your_statistics_are_kept_once_per_game() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Moves the picker's cursor to the shape with index `i` (from the top left).
+fn picker_to(app: &mut App, i: usize) {
+    let press = |app: &mut App, code| app.on_key(KeyEvent::new(code, KeyModifiers::NONE));
+    for _ in 0..4 {
+        press(app, KeyCode::Up);
+    }
+    for _ in 0..super::PICKER_COLUMNS {
+        press(app, KeyCode::Left);
+    }
+    for _ in 0..i / super::PICKER_COLUMNS {
+        press(app, KeyCode::Down);
+    }
+    for _ in 0..i % super::PICKER_COLUMNS {
+        press(app, KeyCode::Right);
+    }
+}
+
 #[test]
-fn you_choose_your_symbol_on_the_setup_and_join_screens() {
+fn you_choose_your_symbol_in_a_window() {
     let mut config = Config::default();
     config.client.name = "Mo".to_string();
     let mut app = App::new(config, Some(1), Sound::new(true));
@@ -367,26 +384,59 @@ fn you_choose_your_symbol_on_the_setup_and_join_screens() {
     press(&mut app, KeyCode::Enter); // Play against bots
     app.setup.row = 1;
     assert_eq!(app.setup.rows()[1], SetupRow::Symbol);
+
+    // Enter on the row opens the window (instead of dealing), on your symbol.
+    press(&mut app, KeyCode::Enter);
+    assert_eq!(app.screen, Screen::Setup);
+    let p = app.picker.expect("the picker is open");
+    assert_eq!(p.cursor, usize::from(named.glyph));
+    picker_to(&mut app, 2);
+    assert_eq!(app.picker.unwrap().preview.glyph, 2);
+    press(&mut app, KeyCode::Enter);
+    assert!(app.picker.is_none());
+    assert_eq!(app.symbol.map(|s| s.glyph), Some(2));
+
+    // A locked shape cannot be taken; the window names what unlocks it.
     press(&mut app, KeyCode::Right);
-    let moved = app.symbol.expect("chosen now");
-    assert_ne!(moved.glyph, named.glyph);
-    assert_eq!(moved.color, named.color);
-    press(&mut app, KeyCode::Char('c'));
-    assert_ne!(app.shown_symbol().color, named.color);
-    // Only the shapes open to everyone, all the way round.
-    for _ in 0..30 {
-        press(&mut app, KeyCode::Left);
-        assert!(app.shown_symbol().is_base());
-    }
-    let chosen = app.shown_symbol();
+    picker_to(&mut app, 12);
+    assert_eq!(app.picker.unwrap().cursor, 12);
+    assert_eq!(
+        app.picker.unwrap().preview.glyph,
+        11,
+        "the last open shape passed"
+    );
+    assert_eq!(
+        app.picker_locked_note().as_deref(),
+        Some("Locked: Royal Flush unlocks this shape")
+    );
+    press(&mut app, KeyCode::Enter);
+    assert!(app.picker.is_some(), "still open");
+
+    // Below the shapes, the colours.
+    press(&mut app, KeyCode::Down);
+    assert_eq!(app.picker.unwrap().color(), Some(2));
+    press(&mut app, KeyCode::Enter);
+    let chosen = app.symbol.unwrap();
+    assert_eq!((chosen.glyph, chosen.color), (11, 2));
     assert_eq!(app.settings_as_config().client.symbol, chosen.to_string());
 
+    // Esc keeps what you had.
+    press(&mut app, KeyCode::Left);
+    press(&mut app, KeyCode::Right);
+    press(&mut app, KeyCode::Esc);
+    assert!(app.picker.is_none());
+    assert_eq!(app.symbol, Some(chosen));
+
+    // The same window from the join screen; letters are not typed there.
     press(&mut app, KeyCode::Esc);
     app.screen = Screen::Join;
     app.join.row = super::JOIN_SYMBOL;
     press(&mut app, KeyCode::Char('c'));
-    assert_ne!(app.shown_symbol().color, chosen.color);
-    assert_eq!(app.join.name, "Mo", "C changes the colour, it is not typed");
+    assert_eq!(app.join.name, "Mo");
+    press(&mut app, KeyCode::Enter);
+    assert!(app.picker.is_some());
+    press(&mut app, KeyCode::Esc);
+    assert_eq!(app.screen, Screen::Join);
 }
 
 #[test]
@@ -410,12 +460,12 @@ fn achievements_unlock_shapes_and_are_announced() {
     let crown = 12;
     assert_eq!(holdem::player::symbol::GLYPHS[crown], "♛");
     assert!(app.available_glyphs().contains(&(crown as u8)));
-    let mut seen = false;
-    for _ in 0..holdem::player::symbol::GLYPHS.len() {
-        app.step_symbol_shape(1);
-        seen |= app.shown_symbol().glyph == crown as u8;
-    }
-    assert!(seen, "the unlocked crown can be chosen");
+    // The unlocked crown can be taken in the picker.
+    app.open_picker();
+    picker_to(&mut app, crown);
+    assert_eq!(app.picker_locked_note(), None);
+    app.on_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert_eq!(app.symbol.map(|s| s.glyph), Some(crown as u8));
 
     app.announce(&Progress::default());
     let notice = app.toast_text().unwrap_or_default().to_string();

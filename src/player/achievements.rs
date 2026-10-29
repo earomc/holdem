@@ -472,6 +472,14 @@ pub fn earned(before: &Progress, after: &Progress) -> Vec<(String, &'static str)
     out
 }
 
+/// The stage that unlocks the symbol shape `glyph` ("Table champion III").
+pub fn unlocked_by(glyph: u8) -> Option<String> {
+    ACHIEVEMENTS.iter().find_map(|a| {
+        let i = a.stages.iter().position(|s| s.unlocks == Some(glyph))?;
+        Some(a.stage_name(i))
+    })
+}
+
 /// The extra symbol shapes `progress` has unlocked.
 pub fn unlocked_glyphs(progress: &Progress) -> Vec<u8> {
     let mut out = Vec::new();
@@ -640,5 +648,8 @@ mod tests {
             ..Progress::default()
         };
         assert_eq!(unlocked_glyphs(&royal), vec![CROWN]);
+        assert_eq!(unlocked_by(CROWN).as_deref(), Some("Royal Flush"));
+        assert_eq!(unlocked_by(CROSS).as_deref(), Some("Table champion III"));
+        assert_eq!(unlocked_by(0), None, "open to everyone");
     }
 }

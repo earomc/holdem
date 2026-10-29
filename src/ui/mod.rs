@@ -26,6 +26,7 @@ mod over;
 mod popups;
 mod setup;
 mod style;
+mod symbol_picker;
 mod table;
 mod text;
 
@@ -51,6 +52,9 @@ pub fn draw(frame: &mut Frame, app: &App) {
     }
     if app.info.is_some() {
         popups::info(frame, app, area);
+    }
+    if app.picker.is_some() {
+        symbol_picker::draw(frame, app, area);
     }
     if app.show_help {
         popups::help(frame, app, area);

@@ -111,7 +111,7 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
     }
     let mut spans = reminder(&[], Place::Join);
     if j.row == JOIN_SYMBOL {
-        spans.push(Span::raw("   ← → shape   C colour"));
+        spans.push(Span::raw("   Enter or ← → choose your symbol"));
     } else {
         spans.push(Span::raw("   type to edit"));
     }

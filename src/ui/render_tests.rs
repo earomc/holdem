@@ -23,7 +23,7 @@ fn press(app: &mut App, code: KeyCode) {
 fn draw_everything(app: &mut App) {
     for (w, h) in SIZES {
         let mut terminal = Terminal::new(TestBackend::new(w, h)).unwrap();
-        for overlay in 0..8 {
+        for overlay in 0..9 {
             app.show_help = overlay == 1;
             app.info = match overlay {
                 2 => Some(InfoTab::TableLog),
@@ -33,6 +33,11 @@ fn draw_everything(app: &mut App) {
             };
             app.show_settings = overlay == 5;
             app.leave = (overlay == 6).then_some(1);
+            // The symbol picker, on a locked shape.
+            app.picker = (overlay == 8).then(|| crate::app::Picker {
+                cursor: 12,
+                preview: app.shown_symbol(),
+            });
             // The panel beside the table shows either log tab.
             app.side_tab = if overlay == 7 {
                 InfoTab::YourHands
@@ -56,6 +61,7 @@ fn draw_everything(app: &mut App) {
     app.info = None;
     app.show_settings = false;
     app.leave = None;
+    app.picker = None;
     app.side_tab = InfoTab::TableLog;
 }
 
@@ -378,6 +384,32 @@ fn the_achievements_screen_lists_every_achievement() {
     assert!(bottom.contains("Network champion"), "{bottom}");
     press(&mut app, KeyCode::Esc);
     assert_eq!(app.screen, Screen::Menu);
+}
+
+#[test]
+fn the_symbol_picker_hides_locked_shapes() {
+    let mut app = App::new(fast_config(), Some(9), Sound::new(true));
+    press(&mut app, KeyCode::Enter); // Play against bots
+    app.setup.row = 1; // Your symbol
+    press(&mut app, KeyCode::Enter);
+    assert!(app.picker.is_some());
+    draw_everything(&mut app);
+    app.picker = Some(crate::app::Picker {
+        cursor: 12,
+        preview: app.shown_symbol(),
+    });
+    let text = screen_text(&app, 100, 30);
+    for open in &holdem::player::symbol::GLYPHS[..holdem::player::symbol::BASE_GLYPHS] {
+        assert!(text.contains(open), "{open} missing");
+    }
+    for locked in &holdem::player::symbol::GLYPHS[holdem::player::symbol::BASE_GLYPHS..] {
+        assert!(!text.contains(locked), "the locked {locked} is shown");
+    }
+    assert!(text.contains("▒"));
+    assert!(
+        text.contains("Locked: Royal Flush unlocks this shape"),
+        "{text}"
+    );
 }
 
 #[test]

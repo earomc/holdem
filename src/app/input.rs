@@ -20,6 +20,8 @@ impl App {
         let code = key.code;
         if self.leave.is_some() {
             self.leave_key(code);
+        } else if self.picker.is_some() {
+            self.picker_key(code);
         } else if self.show_help {
             self.help_key(code);
         } else if self.info.is_some() {

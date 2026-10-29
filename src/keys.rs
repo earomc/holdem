@@ -23,6 +23,8 @@ pub enum Place {
     Over,
     /// The achievements screen.
     Achievements,
+    /// The window for choosing your symbol.
+    SymbolPicker,
     HelpWindow,
     /// The game info window: the table log, your hands and your style.
     InfoWindow,
@@ -66,8 +68,6 @@ pub enum Cmd {
     MaxRaise,
     MainMenu,
     Stay,
-    /// The next colour for your symbol.
-    Color,
 }
 
 /// One line of the Keys help page: one or more bindings and what they do.
@@ -162,10 +162,10 @@ pub const SECTIONS: &[Section] = &[
                 &[(&[Backspace], Cmd::Erase)],
                 "edit your name (on that row, Q, ? and H are letters: F1 opens the help)",
             ),
-            row(
-                &[(&[Char('c')], Cmd::Color)],
-                "on Your symbol: the next colour (← → change the shape)",
-                "",
+            note(
+                "Enter, ← →",
+                &[],
+                "on Your symbol: open the window to choose your symbol",
             ),
             row(
                 &[(&[Enter], Cmd::Select)],
@@ -200,9 +200,9 @@ pub const SECTIONS: &[Section] = &[
                 "edit your name or the address",
             ),
             note(
-                "← → and C",
+                "Enter, ← →",
                 &[],
-                "on Your symbol: change its shape and its colour",
+                "on Your symbol: open the window to choose your symbol",
             ),
             row(
                 &[(&[Enter], Cmd::Select)],
@@ -351,6 +351,24 @@ pub const SECTIONS: &[Section] = &[
                 "cancel and go back to fold / call / raise",
                 "cancel",
             ),
+        ],
+    },
+    Section {
+        place: Place::SymbolPicker,
+        title: "CHOOSING YOUR SYMBOL",
+        rows: &[
+            row(
+                &[
+                    (&[Left], Cmd::Left),
+                    (&[Right], Cmd::Right),
+                    (&[Up], Cmd::Up),
+                    (&[Down], Cmd::Down),
+                ],
+                "move between the shapes and the colours",
+                "choose",
+            ),
+            row(&[(&[Enter], Cmd::Select)], "take this symbol", "take"),
+            row(&[(&[Esc], Cmd::Close)], "keep the symbol you had", "back"),
         ],
     },
     Section {
@@ -611,6 +629,7 @@ mod tests {
         &[Place::Raise],
         &[Place::Over],
         &[Place::Achievements],
+        &[Place::SymbolPicker],
         &[Place::HelpWindow],
         &[Place::InfoWindow],
         &[Place::SettingsWindow],

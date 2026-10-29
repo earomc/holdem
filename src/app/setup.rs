@@ -41,10 +41,7 @@ impl App {
             Some(Cmd::Erase) if row == SetupRow::Name => {
                 self.join.name.pop();
             }
-            Some(Cmd::Color) if row == SetupRow::Symbol => {
-                self.next_symbol_color();
-                self.sound.play(Cue::Tick, 0);
-            }
+            Some(Cmd::Select) if row == SetupRow::Symbol => self.open_picker(),
             Some(Cmd::Select) if self.join.name.trim().is_empty() => {
                 self.notify("Type your name first.".to_string());
                 self.setup.row = 0;
@@ -72,11 +69,7 @@ impl App {
         match row {
             // Typed, not stepped; the table is handled above.
             SetupRow::Name | SetupRow::Table => return,
-            SetupRow::Symbol => {
-                self.step_symbol_shape(delta);
-                self.sound.play(Cue::Tick, 0);
-                return;
-            }
+            SetupRow::Symbol => return self.open_picker(),
             SetupRow::Seats => {
                 s.seats =
                     (s.seats as i32 + delta).clamp(MIN_PLAYERS as i32, MAX_PLAYERS as i32) as usize
@@ -112,14 +105,11 @@ impl App {
             }
             return;
         }
-        // On your symbol's row, ← → and C change it (elsewhere letters are typed).
-        if self.join.row == JOIN_SYMBOL {
-            match code {
-                KeyCode::Left => return self.step_symbol_shape(-1),
-                KeyCode::Right => return self.step_symbol_shape(1),
-                KeyCode::Char('c' | 'C') => return self.next_symbol_color(),
-                _ => {}
-            }
+        // On your symbol's row, Enter and ← → open the picker (elsewhere letters are typed).
+        if self.join.row == JOIN_SYMBOL
+            && matches!(code, KeyCode::Enter | KeyCode::Left | KeyCode::Right)
+        {
+            return self.open_picker();
         }
         let rows = JOIN_FOUND + self.join.found.len();
         match keys::command(Place::Join, code) {

@@ -22,7 +22,7 @@ use crate::help::{self, Item};
 use crate::keys::{self, Cmd, Place};
 use crate::session::Kind;
 
-fn window(title: String, color: Color) -> Block<'static> {
+pub(super) fn window(title: String, color: Color) -> Block<'static> {
     Block::bordered()
         .border_type(BorderType::Rounded)
         .border_style(Style::new().fg(color))

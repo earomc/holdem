@@ -46,8 +46,8 @@ Every key is also listed on the first page of the in-game help (`?`).
 | Where | Keys |
 | --- | --- |
 | Main menu | `↑` `↓` choose, `Enter` select, `?`/`H`/`F1` help, `Q`/`Esc` quit |
-| Setup | `↑` `↓` choose, `←` `→` change, type on the *Your name* row, `C` on *Your symbol* changes its colour, `W` save as your defaults, `Enter` deal / open the table, `Esc`/`Q` back (on the name row, letters are typed: use `Esc`, and `F1` for help) |
-| Join screen | `↑` `↓`/`Tab` move between name, symbol, address and found tables, type to edit, `←` `→` and `C` change your symbol, `Enter` join, `Esc` back or cancel, `F1` help |
+| Setup | `↑` `↓` choose, `←` `→` change, type on the *Your name* row, `Enter` or `←` `→` on *Your symbol* opens the window to choose it, `W` save as your defaults, `Enter` deal / open the table, `Esc`/`Q` back (on the name row, letters are typed: use `Esc`, and `F1` for help) |
+| Join screen | `↑` `↓`/`Tab` move between name, symbol, address and found tables, type to edit, `Enter` or `←` `→` on your symbol opens the window to choose it, `Enter` join, `Esc` back or cancel, `F1` help |
 | Lobby | `Enter` ready / not ready, `S` settings, `?`/`H` help, `Q`/`Esc` leave |
 | Your turn | `F` fold, `C` check/call, `R`/`B` raise box, `A` all-in (press twice) |
 | At the table | `Enter`/`N` next hand (ready), `Y` rebuy when offered, `L` game info, `P` your style, `S` settings (speed, volume, win-chance hint; `W` saves them), `?`/`H` help, `Q`/`Esc` leave |
@@ -67,8 +67,10 @@ a wide terminal the panel beside the table shows the log tab you looked at last.
 
 Every player has a coloured symbol before their name, on the seats and in the lobby. Bots and
 anyone who has not chosen get the one their name gives, always the same. Choose your own on
-the *Your symbol* row of the setup or join screen: `←` `→` change the shape, `C` the colour.
-Everyone at the table sees your choice (players with holdem 0.9 or older see the one your name
+the *Your symbol* row of the setup or join screen: `Enter` (or `←` `→`) opens a window with
+every shape and colour. The arrow keys move between them, `Enter` takes your choice and `Esc`
+keeps the one you had. Shapes you have not unlocked yet show as `▒`, with the achievement that
+unlocks them. Everyone at the table sees your choice (players with holdem 0.9 or older see the one your name
 gives). `W` saves it as `client.symbol`. More shapes unlock with achievements.
 
 ## Table options

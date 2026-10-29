@@ -42,8 +42,8 @@ fn setup_row_text(app: &App, row: SetupRow) -> (&'static str, String, String) {
         SetupRow::Symbol => (
             "Your symbol",
             app.shown_symbol().to_string(),
-            "Shown before your name, for everyone at the table. ← → change the shape, C the \
-             colour; achievements unlock more shapes."
+            "Shown before your name, for everyone at the table. Enter or ← → opens a window to \
+             choose it; achievements unlock more shapes."
                 .to_string(),
         ),
         SetupRow::Table => (
@@ -266,8 +266,9 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
                 ))),
         )));
     } else if rows[selected] == SetupRow::Symbol {
-        let colour = (key_for(Place::Setup, Cmd::Color), "colour");
-        lines.push(Line::from(reminder(&[start, colour], Place::Setup)));
+        // Enter opens the picker here instead of dealing.
+        let choose = (key_for(Place::Setup, Cmd::Select), "choose your symbol");
+        lines.push(Line::from(reminder(&[choose], Place::Setup)));
     } else {
         lines.push(Line::from(reminder(&[start], Place::Setup)));
     }
