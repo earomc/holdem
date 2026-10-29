@@ -6,6 +6,12 @@ All notable changes to holdem. The format follows
 
 ## [Unreleased]
 
+### Added
+- `holdem uninstall` removes a copy the release installer put in place: the program, the
+  installer's receipt, and `~/.cargo/bin` from your PATH if nothing else is in it. It asks
+  first, and keeps your settings and statistics unless you choose otherwise (`--purge`
+  deletes them, `--yes` does not ask). The README also lists the steps by hand.
+
 ## [0.9.0] - 2026-10-28
 
 ### Added

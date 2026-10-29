@@ -5,7 +5,8 @@
 //! * `table`, `protocol`, `net`: the table server every game runs on, and how
 //!   clients talk to it (in memory for your own seat, TCP for everyone else).
 //! * `config`: the optional `holdem.toml` file; `history`: your statistics over
-//!   all games, in `stats.toml` next to it.
+//!   all games, in `stats.toml` next to it; `uninstall`: what `holdem uninstall`
+//!   removes.
 //!
 //! The terminal front end lives in the `holdem` binary.
 
@@ -19,3 +20,4 @@ pub mod net;
 pub mod protocol;
 pub mod stats;
 pub mod table;
+pub mod uninstall;

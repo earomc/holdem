@@ -127,6 +127,28 @@ pub(crate) fn cli() -> Command {
                         ),
                 ),
         )
+        .subcommand(
+            Command::new("uninstall")
+                .about("Remove holdem, as installed by the release installer")
+                .after_help(
+                    "Removes the program and the installer's receipt, and takes the program's \
+                     folder off the PATH if nothing else is in it. Your settings and statistics \
+                     stay unless you choose otherwise.",
+                )
+                .arg(
+                    Arg::new("yes")
+                        .long("yes")
+                        .short('y')
+                        .action(ArgAction::SetTrue)
+                        .help("Do not ask: remove the program, keep your settings and statistics"),
+                )
+                .arg(
+                    Arg::new("purge")
+                        .long("purge")
+                        .action(ArgAction::SetTrue)
+                        .help("Also delete your settings and statistics"),
+                ),
+        )
 }
 
 /// What the command line asked for.
@@ -145,6 +167,10 @@ pub(crate) enum Action {
     Play,
     Server(ServerOptions),
     Config(ConfigAction),
+    Uninstall {
+        yes: bool,
+        purge: bool,
+    },
 }
 
 #[derive(Debug, Default, PartialEq)]
@@ -179,6 +205,10 @@ impl Options {
                 Some(("show", _)) => ConfigAction::Show,
                 other => unreachable!("clap requires a config command, got {:?}", other),
             }),
+            Some(("uninstall", u)) => Action::Uninstall {
+                yes: u.get_flag("yes"),
+                purge: u.get_flag("purge"),
+            },
             None => Action::Play,
             Some((other, _)) => unreachable!("unknown command {}", other),
         };
@@ -261,6 +291,20 @@ mod tests {
         }
         assert_eq!(parse(&[]).unwrap(), Options::default());
         assert!(parse(&["--seed", "x"]).is_err());
+        assert_eq!(
+            parse(&["uninstall", "--yes", "--purge"]).unwrap().action,
+            Action::Uninstall {
+                yes: true,
+                purge: true
+            }
+        );
+        assert_eq!(
+            parse(&["uninstall"]).unwrap().action,
+            Action::Uninstall {
+                yes: false,
+                purge: false
+            }
+        );
         assert!(parse(&["serve", "--port", "70000"]).is_err());
         assert!(parse(&["--bogus"]).is_err());
         assert!(parse(&["--config"]).is_err());

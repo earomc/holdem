@@ -123,3 +123,9 @@ Run the installer again (or replace the program), then restart the table
 (`sudo systemctl restart holdem`). Players with an older or newer holdem are told in plain
 words whether they or the table need to update; see
 [network protocol versions](../CONTRIBUTING.md#network-protocol-versions).
+
+## Removing
+
+Stop the table (`sudo systemctl disable --now holdem`, then delete the unit file), and run
+`holdem uninstall` as the user who installed it (`--purge` also deletes the settings in
+`~/.config/holdem`). See [Uninstalling](../README.md#uninstalling) for doing it by hand.

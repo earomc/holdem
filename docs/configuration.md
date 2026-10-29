@@ -95,6 +95,9 @@ holdem config write [FILE]       write a settings file with every setting explai
                                  (default: the --config file, or holdem.toml; --force replaces it)
 holdem config show               print the settings in effect and where they come from
 holdem config check [FILE]       check a settings file (default: the one holdem would use)
+holdem uninstall [--yes] [--purge]
+                                 remove holdem as the installer put it there; --purge also
+                                 deletes your settings and statistics, --yes does not ask
 
   -c, --config <FILE>    settings file to use
       --seed <NUMBER>    fixed random seed: the same deals every game

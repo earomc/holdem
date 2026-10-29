@@ -9,6 +9,7 @@ mod serve;
 mod session;
 mod sound;
 mod ui;
+mod uninstall_command;
 
 use std::io;
 use std::time::Duration;
@@ -23,6 +24,7 @@ use cli::{Action, Options, cli};
 use config_command::{absolute, run_config, source_text};
 use serve::run_server;
 use sound::Sound;
+use uninstall_command::run_uninstall;
 
 fn run(terminal: &mut DefaultTerminal, app: &mut App) -> io::Result<()> {
     loop {
@@ -50,6 +52,13 @@ fn main() {
     let options = Options::from_matches(&cli().get_matches());
     let chosen = options.config.as_deref();
     let (config, source) = match &options.action {
+        // Before reading the settings: a broken file must not stand in the way.
+        Action::Uninstall { yes, purge } => {
+            if let Err(e) = run_uninstall(*yes, *purge) {
+                fail(e);
+            }
+            return;
+        }
         Action::Config(action) => {
             if let Err(e) = run_config(action, chosen) {
                 fail(e);

@@ -66,6 +66,40 @@ powershell -ExecutionPolicy Bypass -c "irm https://github.com/earomc/holdem/rele
 On a server, start a table with `holdem serve`; [Running a server](docs/server.md) explains
 the rest.
 
+## Uninstalling
+
+```
+holdem uninstall           # asks first; your settings and statistics stay unless you say so
+holdem uninstall --purge   # also deletes your settings and statistics
+holdem uninstall --yes     # does not ask (keeps settings and statistics unless --purge)
+```
+
+It removes the program and the installer's receipt, and takes `~/.cargo/bin` off your PATH
+if nothing else is in that folder (Rust's own tools live there too). It only works for a copy
+the installer put there; a program from an archive you simply delete.
+
+By hand, on Windows (PowerShell):
+
+```powershell
+Remove-Item "$env:USERPROFILE\.cargo\bin\holdem.exe", "$env:LOCALAPPDATA\holdem\holdem-receipt.json"
+Remove-Item -Recurse "$env:APPDATA\holdem"   # your settings and statistics, if you want
+```
+
+Take `%USERPROFILE%\.cargo\bin` off your PATH (Settings → System → About → Advanced system
+settings → Environment Variables) only if nothing else is in that folder.
+
+On Linux and macOS:
+
+```sh
+rm ~/.cargo/bin/holdem ~/.config/holdem/holdem-receipt.json
+rm -r ~/.config/holdem                         # Linux: your settings and statistics, if you want
+rm -r ~/Library/Application\ Support/holdem    # macOS: the same
+```
+
+The installer added a line `. "$HOME/.cargo/env"` to your shell's startup files; remove it
+only if nothing else is in `~/.cargo/bin`. The `holdem-server` release is removed the same
+way, with `holdem-server` in place of `holdem` in the receipt's folder and name.
+
 ## Quick start
 
 ```
